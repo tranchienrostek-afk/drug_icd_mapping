@@ -32,7 +32,7 @@ def get_drug_web_config():
 
             # List Items
             "list_logic": {
-                "item_container": "//a[contains(@href, '/thuoc/')]",
+                "item_container": "//*[@id='content']//a[contains(@href, 'thuoc-')]",
                 "max_items": 2
             },
 
