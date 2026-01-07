@@ -33,8 +33,8 @@ logger.addHandler(stream_handler)
 # ==============================================================================
 def get_drug_web_config():
     """
-    Trả về DataFrame cấu hình các trang web thuốc (Thay vì ghi ra file excel rồi đọc lại)
-    Updated: 2026-01-07 - New selectors for ThuocBietDuoc and TrungTamThuoc
+    Trả về DataFrame cấu hình các trang web thuốc
+    Updated: 2026-01-07 - Specific XPaths from BUG-001 report
     """
     data = {
         "STT": [0, 1, 2],
@@ -46,54 +46,52 @@ def get_drug_web_config():
         "URL": [
             "https://dichvucong.dav.gov.vn/congbothuoc/index",
             "https://www.thuocbietduoc.com.vn/thuoc/drgsearch.aspx",
-            "https://trungtamthuoc.com/"
+            "https://trungtamthuoc.com.vn/"
         ],
         "XPath_Input_Search": [
-            "/html/body/div[4]/div/div[1]/div/div/div[2]/div[1]/div/input[2]",
-            "input#search-input",  # Updated: New UI uses this ID
-            "#txtKeywords"  # Updated: New selector for TrungTamThuoc
+            "xpath=/html/body/div[4]/div/div[1]/div/div/div[2]/div[1]/div/input[2]",
+            "xpath=//*[@id=\"search-input\"]",
+            "xpath=//*[@id=\"txtKeywords\"]"
         ],
         "HanhDong_TimKiem": [
-            "/html/body/div[4]/div/div[1]/div/div/div[2]/div[2]/button[1]",
+            "xpath=/html/body/div[4]/div/div[1]/div/div/div[2]/div[2]/button[1]",
             "ENTER",
-            "#btnsearchheader"  # Updated: Button selector for TrungTamThuoc
+            "ENTER"
         ],
         "XPath_Item_Container": [
-            "/html/body/div[4]/div/div[2]/div[3]/div[2]/table/tbody/tr", 
-            "//a[contains(@class, 'drug-card-title')] | //div[contains(@class, 'grid')]//div[contains(@class, 'bg-white')]",  # Updated: New card layout
-            "//div[contains(@class, 'pro-item')] | //div[contains(@class, 'cs-pro-item')] | //div[contains(@class, 'item')]"
+            "xpath=/html/body/div[4]/div/div[2]/div[3]/div[2]/table/tbody/tr", 
+            "xpath=/html/body/main/section[2]/div/div[2]/div/div/h3/a", 
+            "xpath=//*[@id=\"cscontentdetail\"]/div/div/div/strong/a | //*[@id=\"cscontentdetail\"]/div/div/strong/a"
         ],
         "XPath_Link_ChiTiet": [
             "NO_LINK", 
-            ".",  # Updated: The drug-card-title is already a link
-            ".//a"
-        ],
-        "XPath_NoiDung_Lay": [
             ".",
-            "//div[contains(@class, 'content')] | //article | //main",
-            "//div[contains(@class, 'cs-content')] | //article | //div[contains(@class, 'content')]"
+            "."
         ],
+
         "Field_Selectors": [
              None,
              {
-                 "ten_thuoc": "h1, .drug-title, .page-title",
-                 "so_dang_ky": "//div[contains(text(), 'VD-')] | //div[contains(text(), 'VN-')] | //span[contains(text(), 'VD-')] | //span[contains(text(), 'VN-')]",
-                 "hoat_chat": "//div[contains(text(), 'Hoạt chất')]/following-sibling::* | .ingredient-content",
-                 "dang_bao_che": "//div[contains(text(), 'Dạng bào chế')]/following-sibling::*",
-                 "nhom_thuoc": "//div[contains(text(), 'Nhóm thuốc')]/following-sibling::*",
-                 "ham_luong": "//div[contains(text(), 'Hàm lượng')]/following-sibling::*",
-                 "chi_dinh": "//h2[contains(text(), 'Chỉ định')]/following-sibling::* | #chi-dinh",
-                 "chi_dinh_bk": "//div[contains(@class, 'content')]//p"
+                 "ten_thuoc": "//h1 | /html/body/main/div[2]/div/div[1]/div/div/div[2]/h1",
+                 "so_dang_ky": "//*[contains(text(), 'Số đăng ký')]/following-sibling::* | //*[contains(text(), 'SĐK')]/following-sibling::* | /html/body/main/div[2]/div/div[1]/div/div/div[2]/div[2]/div[1]/div/div[1]/div/div[2]",
+                 "hoat_chat": "//div[contains(text(), 'Hoạt chất')]/following-sibling::* | //div[contains(text(), 'Thành phần')]/following-sibling::* | /html/body/main/div[2]/div/div[1]/div/div/div[2]/div[2]/div[2]/div/div/div/div/a",
+                 "ham_luong": "//div[contains(text(), 'Hàm lượng')]/following-sibling::* | //*[@id=\"thanh-phan-hoat-chat\"]/div[2]/table/tbody/tr/td[2]/span",
+                 "dang_bao_che": "//div[contains(text(), 'Dạng bào chế')]/following-sibling::* | /html/body/main/div[2]/div/div[1]/div/div/div[2]/div[2]/div[1]/div/div[2]/div/div[2]",
+                 "danh_muc": "//div[contains(text(), 'Nhóm thuốc')]/following-sibling::* | /html/body/main/div[2]/div/div[1]/div/div/div[2]/div[2]/div[1]/div/div[4]/div/a",
+                 "chi_dinh": "//h2[contains(text(), 'Chỉ định')]/following-sibling::* | #chi-dinh | //*[@id=\"cong-dung-thuoc\"]/div[2]"
              },
              {
-                 "ten_thuoc": "h1, .cs-pro-title, .product-title",
-                 "so_dang_ky": "//*[contains(text(), 'Số đăng ký')] | //span[contains(text(), 'SĐK')] | //*[contains(text(), 'VD-')] | //*[contains(text(), 'VN-')]",
-                 "hoat_chat": "//*[contains(text(), 'Hoạt chất')] | //*[contains(text(), 'Thành phần')]",
-                 "chi_dinh": "//div[contains(@class, 'cs-content')] | #chi-dinh | //article"
+                 "ten_thuoc": "//h1 | //*[@id=\"cscontentdetail\"]/header/div[2]/div/h1/strong",
+                 "so_dang_ky": "//*[contains(text(), 'Số đăng ký')]/parent::*/td[2] | //*[@id=\"cscontentdetail\"]/header/div[2]/div/table/tbody/tr[3]/td[2]",
+                 "hoat_chat": "//*[contains(text(), 'Hoạt chất')]/parent::*/td[2] | //*[contains(text(), 'Thành phần')]/parent::*/td[2] | //*[@id=\"cs-hoat-chat\"]/td[2]",
+                 "ham_luong": "//*[@id=\"pro-mo-ta-noi-dung\"]/table | //*[@id=\"pro-mo-ta-noi-dung\"]/table",
+                 "dang_bao_che": "//*[contains(text(), 'Dạng bào chế')]/parent::*/td[2] | //*[@id=\"cscontentdetail\"]/header/div[2]/div/table/tbody/tr[4]/td[2]",
+                 "danh_muc": "//*[@id=\"cscategorymain\"]/td[2] | //*[@id=\"cscategorymain\"]/td[2]",
+                 "chi_dinh": "//*[@id=\"pro-mo-ta-noi-dung\"]/p[3] | //div[contains(@class, 'cs-content')]"
              }
         ],
         "UuTien": [99, 1, 3],
-        "Max_Item": [1, 3, 2]  # Increased Max_Item for better results
+        "Max_Item": [1, 2, 2]
     }
     df = pd.DataFrame(data)
     return df.sort_values(by='UuTien')
@@ -139,7 +137,19 @@ async def scrape_single_site_drug(browser, site_config, keyword):
     context = await browser.new_context(
         user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         viewport={'width': 1920, 'height': 1080},
-        permissions=['geolocation', 'notifications']
+        permissions=['geolocation', 'notifications'],
+        extra_http_headers={
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+            "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
+            "Sec-Ch-Ua": '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+            "Sec-Ch-Ua-Mobile": "?0",
+            "Sec-Ch-Ua-Platform": '"Windows"',
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "same-origin",
+            "Sec-Fetch-User": "?1",
+            "Upgrade-Insecure-Requests": "1"
+        }
     )
     # Grant permissions to specific origin if needed, or globally via context
     # Note: permissions arg in new_context applies to all pages in that context
@@ -205,7 +215,8 @@ async def scrape_single_site_drug(browser, site_config, keyword):
             logger.warning(f"[{site_name}] Primary container not found. Trying Smart Fallback...")
             # --- SMART FALLBACK ---
             # Strategy 1: Look for common drug links
-            fallback_items = page.locator("a.drug-card-title, //h3/a, //h2/a, .product-title a")
+            # Strategy 1: Look for common drug links (Separated for Playwright)
+            fallback_items = page.locator("a.drug-card-title").or_(page.locator("xpath=//h3/a")).or_(page.locator("xpath=//h2/a")).or_(page.locator(".product-title a"))
             if await fallback_items.count() > 0:
                  logger.info(f"[{site_name}] Fallback Success: Found {await fallback_items.count()} items via common selectors.")
                  items = fallback_items
@@ -245,7 +256,19 @@ async def scrape_single_site_drug(browser, site_config, keyword):
                 link_xp = site_config['XPath_Link_ChiTiet']
                 final_xp = None
                 if link_xp != "NO_LINK":
-                    final_xp = f"xpath=.//{link_xp}" if not link_xp.startswith("/") else f"xpath=.{link_xp}"
+                    if link_xp.startswith("xpath="):
+                        # Config already extracted absolute or relative xpath with prefix
+                        # We need to make it relative to the ITEM. 
+                        # Playwright: item.locator("xpath=./div/...") work? 
+                        # Usually .locator("xpath=.//...") is safer.
+                        # Clean the prefix
+                        raw_xp = link_xp.replace("xpath=", "")
+                        if raw_xp.startswith("."):
+                            final_xp = link_xp # assume formatted correctly as relative
+                        else:
+                            final_xp = f"xpath=.//{raw_xp.lstrip('/')}"
+                    else:
+                        final_xp = f"xpath=.//{link_xp}" if not link_xp.startswith("/") else f"xpath=.{link_xp}"
 
                 if final_xp and await item.locator(final_xp).count() > 0:
                     link_url = await item.locator(final_xp).first.get_attribute("href")
@@ -276,10 +299,27 @@ async def scrape_single_site_drug(browser, site_config, keyword):
                             try:
                                 if not selector: continue
                                 # Check selector type
-                                if selector.startswith("//") or selector.startswith("xpath="):
-                                    sel_str = f"xpath={selector}" if not selector.startswith("xpath=") else selector
+                                sel_str = selector
+                                if "|" in selector:
+                                     # Union selector, Playwright handles this if distinct selectors, 
+                                     # but if mixing xpath and css, we need to be careful.
+                                     # Assuming all parts are predominantly XPath if user provided complex ones.
+                                     # Or assume the string IS a valid Playwright selector (separated by | or ,)
+                                     # But if we used 'xpath=' prefix in config ONLY at start, we might need to propagate it?
+                                     # Actually, let's just treat it as a raw selector if it contains |.
+                                     # But if it starts with xpath=, strip it and use xpath= wrapper for the whole thing (if compatible)
+                                     # Or better: Split by | and wrap each if needed? 
+                                     # Playwright supports "xpath=A | xpath=B" ? No, standar XPath union is just A | B.
+                                     
+                                     if selector.startswith("xpath="):
+                                         sel_str = selector # pass as is, assume valid xpath union
+                                     elif "//" in selector:
+                                         sel_str = f"xpath={selector}"
                                 else:
-                                    sel_str = selector # CSS
+                                    if selector.startswith("//") or selector.startswith("xpath="):
+                                        sel_str = f"xpath={selector}" if not selector.startswith("xpath=") else selector
+                                    else:
+                                        sel_str = selector # CSS
                                 
                                 # Wait optional (fast check)
                                 if await new_page.locator(sel_str).count() > 0:
