@@ -15,19 +15,18 @@ def get_drug_web_config():
             "enabled": True,
             "priority": 1,
             
-            # Search Behavior - Robust Fallback Selectors
+            # Search Behavior - FIXED: BUG-011 (Browser Inspected 2026-01-07 16:44)
             "search": {
                 "input_selectors": [
-                    "input[name*='TenThuoc']",  # CSS attribute contains (most robust)
-                    "input[id*='txtTenThuoc']",  # CSS ID contains
-                    "#ContentPlaceHolder1_txtTenThuoc",  # Simpler ID
-                    "//input[contains(@id, 'TenThuoc')]"  # XPath fallback
+                    "#search-form input[name='key']",  # Most reliable (form context)
+                    "#search-input",  # Direct ID (but duplicated on page)
+                    "input[name='key']",  # By name attribute
+                    "input[placeholder*='Tìm kiếm thuốc']"  # By placeholder
                 ],
-                "action_type": "CLICK",
+                "action_type": "ENTER",  # Changed: Use Enter key, not button click
                 "button_selectors": [
-                    "input[name*='btnSearch']",
-                    "#ContentPlaceHolder1_btnSearch",
-                    "//input[contains(@id, 'btnSearch')]"
+                    "#search-form button[type='submit']",
+                    "button[aria-label='Tìm kiếm']"
                 ]
             },
 
