@@ -10,13 +10,11 @@ async def try_selectors(page, selectors, timeout=5000):
     """
     for sel in selectors:
         try:
-            # Normalize selector
             if sel.startswith("//") or sel.startswith("/html"):
                 final_sel = f"xpath={sel}"
             else:
                 final_sel = sel
             
-            # Quick check without full wait
             locator = page.locator(final_sel)
             if await locator.count() > 0:
                 return final_sel, locator.first
@@ -40,9 +38,11 @@ async def try_selectors(page, selectors, timeout=5000):
 
 async def scrape_single_site_drug(browser, site_config, keyword):
     """
-    Logic cào thuốc (Refactored for Schema v3 - BUG-009 Fix)
-    - Uses fallback selector lists
-    - Proper error logging
+    Logic cào thuốc (v4 - BUG-010 Lesson Learn Applied)
+    - Resource blocking (faster loading)
+    - Higher timeout (60s)
+    - Retry logic (3 attempts)
+    - Stable browser args
     """
     site_name = site_config['site_name']
     url = site_config['url']
@@ -51,9 +51,11 @@ async def scrape_single_site_drug(browser, site_config, keyword):
     start_time = time.time()
     logger.info(f"[{site_name}] STARTER - Clean Keyword: '{keyword}'")
     
+    # LESSON 1: Better context with ignore_https_errors
     context = await browser.new_context(
         user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         viewport={'width': 1920, 'height': 1080},
+        ignore_https_errors=True,
         extra_http_headers={
             "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
             "Upgrade-Insecure-Requests": "1"
@@ -62,55 +64,90 @@ async def scrape_single_site_drug(browser, site_config, keyword):
     
     page = await context.new_page()
     
+    # LESSON 2: Block resources for faster loading
+    async def block_resources(route):
+        if route.request.resource_type in ["image", "font", "stylesheet"]:
+            await route.abort()
+        else:
+            await route.continue_()
+    await page.route("**/*", block_resources)
+    
+    # LESSON 3: Higher timeout (60s instead of 30s)
+    page.set_default_timeout(60000)
+    
     try:
         logger.info(f"[{site_name}] Navigating to: {url}")
-        try:
-            await page.goto(url, timeout=30000)
-        except Exception as nav_err:
-            logger.error(f"[{site_name}] NETWORK ERROR: {nav_err}")
-            return []  # Network failure - cannot proceed
         
-        # --- SEARCH PHASE with Fallback Selectors ---
+        # LESSON 4: Retry logic for navigation
+        nav_success = False
+        for attempt in range(3):
+            try:
+                await page.goto(url, timeout=60000, wait_until="domcontentloaded")
+                nav_success = True
+                break
+            except Exception as nav_err:
+                logger.warning(f"[{site_name}] Nav attempt {attempt+1}/3 failed: {nav_err}")
+                await asyncio.sleep(2)
+        
+        if not nav_success:
+            logger.error(f"[{site_name}] NETWORK ERROR: All navigation attempts failed")
+            return []
+        
+        # --- SEARCH PHASE with Retry ---
         search_cfg = site_config['search']
         input_selectors = search_cfg.get('input_selectors', [])
         
-        logger.info(f"[{site_name}] Finding search input...")
-        found_sel, input_el = await try_selectors(page, input_selectors, timeout=8000)
-        
-        if not input_el:
-            logger.error(f"[{site_name}] SELECTOR ERROR: No input field found after trying {len(input_selectors)} selectors")
-            return []  # Hard fail - cannot search
-        
-        logger.info(f"[{site_name}] Found input using: {found_sel}")
-        await input_el.fill(keyword)
-        
-        # Execute Action
-        action_type = search_cfg['action_type']
-        if action_type == "ENTER":
-            await page.keyboard.press("Enter")
-        elif action_type == "CLICK":
-            btn_selectors = search_cfg.get('button_selectors', [])
-            if btn_selectors:
-                _, btn_el = await try_selectors(page, btn_selectors, timeout=3000)
-                if btn_el:
-                    await btn_el.click()
-                else:
-                    logger.warning(f"[{site_name}] Search button not found, trying Enter key")
+        search_success = False
+        for attempt in range(3):
+            try:
+                logger.info(f"[{site_name}] Finding search input (attempt {attempt+1})...")
+                found_sel, input_el = await try_selectors(page, input_selectors, timeout=10000)
+                
+                if not input_el:
+                    logger.warning(f"[{site_name}] Input not found, retrying...")
+                    await asyncio.sleep(2)
+                    continue
+                
+                logger.info(f"[{site_name}] Found input using: {found_sel}")
+                await input_el.fill(keyword)
+                
+                # Execute Action
+                action_type = search_cfg['action_type']
+                if action_type == "ENTER":
                     await page.keyboard.press("Enter")
+                elif action_type == "CLICK":
+                    btn_selectors = search_cfg.get('button_selectors', [])
+                    if btn_selectors:
+                        _, btn_el = await try_selectors(page, btn_selectors, timeout=5000)
+                        if btn_el:
+                            await btn_el.click()
+                        else:
+                            await page.keyboard.press("Enter")
+                
+                search_success = True
+                break
+            except Exception as e:
+                logger.warning(f"[{site_name}] Search attempt {attempt+1}/3 failed: {e}")
+                await asyncio.sleep(2)
         
-        logger.info(f"[{site_name}] Search triggered.")
-        await asyncio.sleep(2)
+        if not search_success:
+            logger.error(f"[{site_name}] SEARCH ERROR: All attempts failed")
+            return []
+        
+        logger.info(f"[{site_name}] Search triggered. Waiting for results...")
+        
+        # LESSON 5: Wait longer for dynamic content
+        await asyncio.sleep(3)
         
         # --- LIST PHASE ---
         list_cfg = site_config['list_logic']
         container_sel = list_cfg['item_container']
         
-        # Normalize container selector
         if container_sel.startswith("//"):
             container_sel = f"xpath={container_sel}"
         
         try:
-            await page.wait_for_selector(container_sel, timeout=10000)
+            await page.wait_for_selector(container_sel, timeout=15000)
             items = page.locator(container_sel)
         except:
             logger.warning(f"[{site_name}] No items found with selector: {container_sel}")
@@ -151,13 +188,13 @@ async def scrape_single_site_drug(browser, site_config, keyword):
             if has_detail and link_url.startswith("http"):
                 try:
                     new_page = await context.new_page()
-                    await new_page.goto(link_url, timeout=30000)
+                    await new_page.route("**/*", block_resources)
+                    await new_page.goto(link_url, timeout=60000, wait_until="domcontentloaded")
                     full_content, extracted_fields = await extract_drug_details(new_page, site_config, site_name, logger)
                     await new_page.close()
                 except Exception as err:
                     logger.error(f"[{site_name}] Detail error: {err}")
             elif not has_detail:
-                # In-page extraction (e.g., DAV table)
                 try:
                     fields_cfg = site_config.get('fields', {})
                     for field, sels in fields_cfg.items():
