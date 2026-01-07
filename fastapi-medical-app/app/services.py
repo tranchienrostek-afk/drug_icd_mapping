@@ -1166,7 +1166,7 @@ class DiseaseDbEngine:
 
 
 
-from app.service.web_crawler import search_icd_online
+from app.service.crawler import search_icd_online
 
 # --- WEB SCRAPER WRAPPERS ---
 async def scrape_drug_web(keyword):
