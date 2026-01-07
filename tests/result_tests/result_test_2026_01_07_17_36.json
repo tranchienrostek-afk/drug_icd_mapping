@@ -1,0 +1,84 @@
+{
+  "summary": "API Drug Search Test",
+  "cases": [
+    {
+      "test_id": "TC01",
+      "input": "Paracetamol",
+      "description": "Basic search, expected to match DB or Web high confidence",
+      "status_code": 200,
+      "duration_seconds": 59.047718,
+      "response": {
+        "results": [
+          {
+            "input_name": "Paracetamol",
+            "official_name": "Paracetamol",
+            "sdk": "Web Result (No SDK)",
+            "active_ingredient": "",
+            "usage": "Combined from 1 sources.",
+            "source": "Web Search (Advanced)",
+            "confidence": 0.8,
+            "source_urls": [
+              "https://thuocbietduoc.com.vn/thuoc/drgsearch.aspx"
+            ],
+            "is_duplicate": false
+          }
+        ]
+      },
+      "timestamp": "2026-01-07T17:37:44.826855"
+    },
+    {
+      "test_id": "TC02",
+      "input": "Symbicort 120 liều",
+      "error": "HTTPConnectionPool(host='localhost', port=8000): Read timed out. (read timeout=60)",
+      "timestamp": "2026-01-07T17:38:44.852855"
+    },
+    {
+      "test_id": "TC03",
+      "input": "NonExistentDrugXYZ",
+      "description": "Unknown drug, check error handling/low confidence",
+      "status_code": 200,
+      "duration_seconds": 46.162409,
+      "response": {
+        "results": [
+          {
+            "input_name": "NonExistentDrugXYZ123",
+            "official_name": "NonExistentDrugXYZ123",
+            "sdk": "Web Result (No SDK)",
+            "active_ingredient": "",
+            "usage": "Combined from 1 sources.",
+            "source": "Web Search (Advanced)",
+            "confidence": 0.8,
+            "source_urls": [
+              "https://thuocbietduoc.com.vn/thuoc/drgsearch.aspx"
+            ],
+            "is_duplicate": false
+          }
+        ]
+      },
+      "timestamp": "2026-01-07T17:39:31.015264"
+    },
+    {
+      "test_id": "TC04",
+      "input": "Panadol Extra",
+      "description": "Common brand name",
+      "status_code": 200,
+      "duration_seconds": 49.610167,
+      "response": {
+        "results": [
+          {
+            "input_name": "Panadol Extra",
+            "official_name": null,
+            "sdk": null,
+            "active_ingredient": null,
+            "usage": "N/A",
+            "source": "Web",
+            "confidence": 0.8,
+            "source_urls": [],
+            "is_duplicate": false
+          }
+        ]
+      },
+      "timestamp": "2026-01-07T17:40:20.625431"
+    }
+  ]
+}
