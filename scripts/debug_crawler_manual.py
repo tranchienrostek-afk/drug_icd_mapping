@@ -6,7 +6,7 @@ import json
 # Add app to path
 sys.path.append(os.path.join(os.getcwd(), 'fastapi-medical-app'))
 
-from app.service.web_crawler import scrape_drug_web_advanced
+from app.service.crawler import scrape_drug_web_advanced
 
 async def run():
     keyword = "Paracetamol 500mg"

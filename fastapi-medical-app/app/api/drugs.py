@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException
 from app.models import DrugRequest, DrugConfirmRequest, DrugDiseaseLinkRequest, DrugStagingResponse, DrugHistoryResponse, DrugStagingUpdateRequest
 from typing import List
-from app.services import DrugDbEngine, scrape_drug_web
+from app.services import DrugDbEngine
+from app.service.crawler import scrape_drug_web_advanced as scrape_drug_web
 from app.utils import normalize_drug_name
 
 router = APIRouter()

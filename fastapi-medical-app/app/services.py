@@ -11,6 +11,7 @@ from playwright.async_api import async_playwright
 from openai import AzureOpenAI
 from app.utils import normalize_text
 from dotenv import load_dotenv
+from app.service.crawler import search_icd_online
 
 load_dotenv()
 
