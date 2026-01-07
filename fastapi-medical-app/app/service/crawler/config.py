@@ -45,18 +45,25 @@ def get_drug_web_config():
             },
 
             # Extraction Rules
+            # Extraction Rules (Updated for BUG-012 - Div Layout)
             "fields": {
                 "so_dang_ky": [
-                    "//td[contains(text(), 'Số đăng ký')]/following-sibling::td",
+                    "//div[contains(text(), 'Số đăng ký')]/following-sibling::div", # Div layout
+                    "//td[contains(text(), 'Số đăng ký')]/following-sibling::td", # Table layout fallback
                     "//span[contains(text(), 'SĐK')]/following-sibling::span"
                 ],
                 "hoat_chat": [
+                    ".ingredient-content", # Robust CSS class
+                    "//div[contains(text(), 'Thành phần')]/following-sibling::div",
                     "//td[contains(text(), 'Hoạt chất')]/following-sibling::td"
                 ],
                 "cong_ty_san_xuat": [
+                    "//div[contains(text(), 'Nhà sản xuất')]/following-sibling::div",
                     "//td[contains(text(), 'Nhà sản xuất')]/following-sibling::td"
                 ],
                 "chi_dinh": [
+                    "#chi-dinh", # ID selector
+                    "//div[contains(text(), 'Chỉ định')]/following-sibling::div",
                     "//td[contains(text(), 'Chỉ định')]/following-sibling::td"
                 ]
             }
