@@ -26,3 +26,10 @@
 ```bash
 $alembic revision --autogenerate -m "add_sdk_index"$ pytest tests/test_drug_flow.py -v
 > PASSED 5/5
+
+## 4. Kết quả (Results)
+*Giải thích ngắn gọn (1-2 câu) về kết quả thực thi.*
+> Ví dụ: Tôi đã update logic check trùng lặp trong `services.py` bằng cách thêm bước kiểm tra Staging trước khi gọi `db.add()`. 
+
+## 5. Bài học đúc kết thành tri thức cho hệ thống (Lessons Learned )
+*Giải thích ngắn gọn (1-2 câu) về bài học rút ra từ thực thi.Là cơ sở cho các suy luận về sau. 
