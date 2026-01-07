@@ -1,11 +1,12 @@
 
-# Validated Scraper Configuration
+# Validated Scraper Configuration v3
 # Schema Strictness: High
-# No None values allowed. Use empty strings or empty lists.
+# Changes: Robust CSS selectors, fallback lists, disabled DNS-failing site
 
 def get_drug_web_config():
     """
     Returns a list of validated site configurations.
+    Updated 2026-01-07 15:15 - BUG-009 Fix
     """
     return [
         {
@@ -14,137 +15,131 @@ def get_drug_web_config():
             "enabled": True,
             "priority": 1,
             
-            # Search Behavior
+            # Search Behavior - Robust Fallback Selectors
             "search": {
-                "input_xpath": "//*[@id='ctl00_ContentPlaceHolder1_txtTenThuoc']",
-                "action_type": "CLICK", # Enum: ENTER or CLICK
-                "button_xpath": "//*[@id='ctl00_ContentPlaceHolder1_btnSearch']"
+                "input_selectors": [
+                    "input[name*='TenThuoc']",  # CSS attribute contains (most robust)
+                    "input[id*='txtTenThuoc']",  # CSS ID contains
+                    "#ContentPlaceHolder1_txtTenThuoc",  # Simpler ID
+                    "//input[contains(@id, 'TenThuoc')]"  # XPath fallback
+                ],
+                "action_type": "CLICK",
+                "button_selectors": [
+                    "input[name*='btnSearch']",
+                    "#ContentPlaceHolder1_btnSearch",
+                    "//input[contains(@id, 'btnSearch')]"
+                ]
             },
 
             # List Items
             "list_logic": {
-                "item_container": "//a[contains(@class, 'drug-list-item') or contains(@href, '/thuoc/')]",  # Generic robust selector
+                "item_container": "//a[contains(@href, '/thuoc/')]",
                 "max_items": 2
             },
 
             # Detail Page
             "detail_logic": {
                 "has_detail_page": True,
-                "link_xpath": ".", # Click the container itself
-                "expand_button_xpath": "", # No expand needed usually
-                "content_container": "//*[@id='content']" # Fallback if specific fields fail
+                "link_xpath": ".",
+                "expand_button_xpath": "",
+                "content_container": "//*[@id='content']"
             },
 
-            # Extraction Rules (List of XPaths for fallback)
+            # Extraction Rules
             "fields": {
                 "so_dang_ky": [
-                    "//div[contains(text(), 'Số đăng ký')]/following-sibling::div",
-                    "//span[contains(text(), 'SĐK')]/following-sibling::span",
-                    "//*[@id='divSoDangKy']"
+                    "//td[contains(text(), 'Số đăng ký')]/following-sibling::td",
+                    "//span[contains(text(), 'SĐK')]/following-sibling::span"
                 ],
                 "hoat_chat": [
-                    "//div[contains(text(), 'Dạng bào chế')]/following-sibling::div", # Often near info
-                    "//*[@id='divHoatChat']"
+                    "//td[contains(text(), 'Hoạt chất')]/following-sibling::td"
                 ],
                 "cong_ty_san_xuat": [
-                    "//div[contains(text(), 'Nhà sản xuất')]/following-sibling::div",
-                    "//*[@id='divNhaSanXuat']"
+                    "//td[contains(text(), 'Nhà sản xuất')]/following-sibling::td"
                 ],
                 "chi_dinh": [
-                    "//div[contains(text(), 'Chỉ định')]/following-sibling::div",
-                    "//*[@id='divChiDinh']"
+                    "//td[contains(text(), 'Chỉ định')]/following-sibling::td"
                 ]
             }
         },
         {
             "site_name": "TrungTamThuoc",
             "url": "https://trungtamthuoc.com.vn/",
-            "enabled": True,
+            "enabled": False,  # DISABLED: DNS not resolving in Docker (BUG-009)
             "priority": 2,
             
             "search": {
-                "input_xpath": "//input[@name='search' or @type='text']",
+                "input_selectors": [
+                    "input[name='search']",
+                    "input[type='text'][placeholder*='tìm']"
+                ],
                 "action_type": "ENTER",
-                "button_xpath": ""
+                "button_selectors": []
             },
 
             "list_logic": {
-                "item_container": "//div[contains(@class, 'product-item') or contains(@class, 'item-product')]//h3/a",
+                "item_container": ".product-item a",
                 "max_items": 2
             },
 
             "detail_logic": {
                 "has_detail_page": True,
                 "link_xpath": ".",
-                "expand_button_xpath": "//*[@id='btn-expand-content']",
-                "content_container": "//*[@id='content']"
+                "expand_button_xpath": "",
+                "content_container": "#content"
             },
 
             "fields": {
-                "so_dang_ky": [
-                    "//tr[td[contains(text(), 'Số đăng ký')]]/td[2]",
-                    "//span[contains(text(), 'Số đăng ký')]/following-sibling::span"
-                ],
-                "hoat_chat": [
-                    "//tr[td[contains(text(), 'Hoạt chất')]]/td[2]"
-                ],
-                "cong_ty_san_xuat": [
-                    "//tr[td[contains(text(), 'Nhà sản xuất')]]/td[2]"
-                ],
-                "chi_dinh": [
-                    "//*[@id='chi-dinh']//following-sibling::div[1]"
-                ]
+                "so_dang_ky": ["//tr[td[contains(text(), 'Số đăng ký')]]/td[2]"],
+                "hoat_chat": ["//tr[td[contains(text(), 'Hoạt chất')]]/td[2]"],
+                "cong_ty_san_xuat": ["//tr[td[contains(text(), 'Nhà sản xuất')]]/td[2]"],
+                "chi_dinh": []
             }
         },
         {
-            "site_name": "DAV (Dịch Vụ Công)",
+            "site_name": "DAV",
             "url": "https://dichvucong.dav.gov.vn/congbothuoc/index",
             "enabled": True,
             "priority": 3,
             
             "search": {
-                "input_xpath": "//input[@id='txtTenThuoc']",
+                "input_selectors": [
+                    "#txtTenThuoc",
+                    "input[placeholder*='tên thuốc']",
+                    "input[type='text']"
+                ],
                 "action_type": "CLICK",
-                "button_xpath": "//button[@id='btnSearch']" # Hypothetical robust ID
+                "button_selectors": [
+                    "#btnSearch",
+                    "button[type='submit']",
+                    ".btn-search"
+                ]
             },
 
             "list_logic": {
-                "item_container": "//table[@id='tblDSThuoc']//tr[position()>1]",
+                "item_container": "#tblDSThuoc tbody tr",
                 "max_items": 2
             },
 
             "detail_logic": {
-                "has_detail_page": False, # Table row contains data
+                "has_detail_page": False,
                 "link_xpath": "",
                 "expand_button_xpath": "",
                 "content_container": "."
             },
 
             "fields": {
-                "so_dang_ky": [
-                    "./td[2]" # Relative to row
-                ],
-                "hoat_chat": [
-                    "./td[3]"
-                ],
-                "cong_ty_san_xuat": [
-                    "./td[5]"
-                ],
-                "chi_dinh": [] # Not available in table list usually
+                "so_dang_ky": ["td:nth-child(2)"],
+                "hoat_chat": ["td:nth-child(3)"],
+                "cong_ty_san_xuat": ["td:nth-child(5)"],
+                "chi_dinh": []
             }
         }
     ]
 
 def get_icd_web_config():
-    """
-    Returns ICD configuration (Refactored to match Drug schema slightly if needed, 
-    but for now keeping simple as core_icd manages it).
-    """
+    """ICD configuration."""
     import pandas as pd
-    # Maintaining DataFrame for ICD for now to limit scope of change to Drugs first,
-    # or refactor if requested. The Plan focused on Drugs logic.
-    # BUT consistency is key. Let's keep ICD simple for now.
-    
     data = {
         "TenTrang": ["KCB_ICD"],
         "URL": ["https://icd.kcb.vn"],

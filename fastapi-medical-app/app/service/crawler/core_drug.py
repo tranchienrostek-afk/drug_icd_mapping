@@ -3,11 +3,46 @@ import asyncio
 from .utils import logger, SCREENSHOT_DIR
 from .extractors import extract_drug_details
 
+async def try_selectors(page, selectors, timeout=5000):
+    """
+    Try multiple selectors, return the first one that works.
+    Supports both CSS and XPath (prefix with 'xpath=' or '//' detection).
+    """
+    for sel in selectors:
+        try:
+            # Normalize selector
+            if sel.startswith("//") or sel.startswith("/html"):
+                final_sel = f"xpath={sel}"
+            else:
+                final_sel = sel
+            
+            # Quick check without full wait
+            locator = page.locator(final_sel)
+            if await locator.count() > 0:
+                return final_sel, locator.first
+        except:
+            continue
+    
+    # None found, try with wait as last resort
+    for sel in selectors:
+        try:
+            if sel.startswith("//") or sel.startswith("/html"):
+                final_sel = f"xpath={sel}"
+            else:
+                final_sel = sel
+            
+            await page.wait_for_selector(final_sel, timeout=timeout)
+            return final_sel, page.locator(final_sel).first
+        except:
+            continue
+    
+    return None, None
+
 async def scrape_single_site_drug(browser, site_config, keyword):
     """
-    Logic cào thuốc (Refactored for Schema v2)
-    Args:
-        site_config (dict): The new validated config dictionary.
+    Logic cào thuốc (Refactored for Schema v3 - BUG-009 Fix)
+    - Uses fallback selector lists
+    - Proper error logging
     """
     site_name = site_config['site_name']
     url = site_config['url']
@@ -16,7 +51,6 @@ async def scrape_single_site_drug(browser, site_config, keyword):
     start_time = time.time()
     logger.info(f"[{site_name}] STARTER - Clean Keyword: '{keyword}'")
     
-    # Create new context explicitly
     context = await browser.new_context(
         user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         viewport={'width': 1920, 'height': 1080},
@@ -30,48 +64,63 @@ async def scrape_single_site_drug(browser, site_config, keyword):
     
     try:
         logger.info(f"[{site_name}] Navigating to: {url}")
-        await page.goto(url, timeout=45000)
-        
-        # --- SEARCH PHASE ---
-        logger.info(f"[{site_name}] Filling search input...")
-        search_cfg = site_config['search']
-        
         try:
-            input_xp = search_cfg['input_xpath'] # Assuming cleaned config has valid xpath
-            await page.wait_for_selector(input_xp, timeout=8000)
-            await page.locator(input_xp).first.fill(keyword)
-        except Exception as e:
-             logger.warning(f"[{site_name}] Input field error: {e}")
-             return []
+            await page.goto(url, timeout=30000)
+        except Exception as nav_err:
+            logger.error(f"[{site_name}] NETWORK ERROR: {nav_err}")
+            return []  # Network failure - cannot proceed
+        
+        # --- SEARCH PHASE with Fallback Selectors ---
+        search_cfg = site_config['search']
+        input_selectors = search_cfg.get('input_selectors', [])
+        
+        logger.info(f"[{site_name}] Finding search input...")
+        found_sel, input_el = await try_selectors(page, input_selectors, timeout=8000)
+        
+        if not input_el:
+            logger.error(f"[{site_name}] SELECTOR ERROR: No input field found after trying {len(input_selectors)} selectors")
+            return []  # Hard fail - cannot search
+        
+        logger.info(f"[{site_name}] Found input using: {found_sel}")
+        await input_el.fill(keyword)
         
         # Execute Action
         action_type = search_cfg['action_type']
         if action_type == "ENTER":
-             await page.keyboard.press("Enter")
+            await page.keyboard.press("Enter")
         elif action_type == "CLICK":
-             btn_xp = search_cfg['button_xpath']
-             if btn_xp:
-                 try:
-                    await page.wait_for_selector(btn_xp, timeout=3000)
-                    await page.click(btn_xp)
-                 except: pass # Optional click sometimes
+            btn_selectors = search_cfg.get('button_selectors', [])
+            if btn_selectors:
+                _, btn_el = await try_selectors(page, btn_selectors, timeout=3000)
+                if btn_el:
+                    await btn_el.click()
+                else:
+                    logger.warning(f"[{site_name}] Search button not found, trying Enter key")
+                    await page.keyboard.press("Enter")
         
         logger.info(f"[{site_name}] Search triggered.")
-        await asyncio.sleep(2) 
+        await asyncio.sleep(2)
         
         # --- LIST PHASE ---
         list_cfg = site_config['list_logic']
-        container_xp = list_cfg['item_container']
+        container_sel = list_cfg['item_container']
         
-        try: 
-            await page.wait_for_selector(container_xp, timeout=10000)
-            items = page.locator(container_xp)
-        except: 
-            logger.warning(f"[{site_name}] Primary container not found. Fallbacks skipped for simplicity in v2 refactor.")
-            items = page.locator("xpath=//non-existent") # Empty locator
+        # Normalize container selector
+        if container_sel.startswith("//"):
+            container_sel = f"xpath={container_sel}"
+        
+        try:
+            await page.wait_for_selector(container_sel, timeout=10000)
+            items = page.locator(container_sel)
+        except:
+            logger.warning(f"[{site_name}] No items found with selector: {container_sel}")
+            items = page.locator("xpath=//non-existent")
         
         count = await items.count()
         logger.info(f"[{site_name}] Found {count} items.")
+        
+        if count == 0:
+            return []
         
         # --- DETAIL PHASE ---
         detail_cfg = site_config['detail_logic']
@@ -82,19 +131,16 @@ async def scrape_single_site_drug(browser, site_config, keyword):
             item = items.nth(i)
             link_url = "N/A"
             
-            # Determine Link URL
             if has_detail:
-                # Need to click/navigate
                 link_xp = detail_cfg['link_xpath']
                 target_el = item if link_xp == "." else item.locator(link_xp)
                 
                 if await target_el.count() > 0:
-                     link_url = await target_el.first.get_attribute("href")
-                     if link_url and not link_url.startswith("http"):
+                    link_url = await target_el.first.get_attribute("href")
+                    if link_url and not link_url.startswith("http"):
                         base = "https://" + url.split("/")[2]
                         link_url = base + link_url
             else:
-                # Data is in the row itself (e.g. DAV)
                 link_url = "In-Page"
 
             logger.info(f"[{site_name}] Item {i+1}: Link: {link_url}")
@@ -103,36 +149,34 @@ async def scrape_single_site_drug(browser, site_config, keyword):
             extracted_fields = {}
 
             if has_detail and link_url.startswith("http"):
-                 try:
+                try:
                     new_page = await context.new_page()
                     await new_page.goto(link_url, timeout=30000)
-                    # Extract using extractor v2 (needs to handle new config schema)
                     full_content, extracted_fields = await extract_drug_details(new_page, site_config, site_name, logger)
                     await new_page.close()
-                 except Exception as err:
+                except Exception as err:
                     logger.error(f"[{site_name}] Detail error: {err}")
             elif not has_detail:
-                 # Extract from the 'item' locator directly (e.g. table row)
-                 # We probably need to pass 'item' locator to extractor?
-                 # Refactor: extract_drug_details usually takes a PAGE.
-                 # For DAV, we need to extract from ElementHandle/Locator.
-                 # Let's adjust extractor to accept locator? 
-                 # Or just do quick extraction here for Table layout:
-                 pass # TODO: Implement quick table extraction or update extractor
-                 
-                 # Temporary logic for current DAV table structure if simple
-                 # But extractor.py handles 'fields' logic best.
-                 # We will skip complex in-page extraction update for now, focus on existing flows.
-                 if site_name == "DAV (Dịch Vụ Công)":
-                      # Quick extract for DAV specifically since we removed 'Field_Selectors' parsing in core logic
-                      # Actually, let's make extract_drug_details handle 'root' element
-                      pass
+                # In-page extraction (e.g., DAV table)
+                try:
+                    fields_cfg = site_config.get('fields', {})
+                    for field, sels in fields_cfg.items():
+                        for sel in sels:
+                            try:
+                                cell = item.locator(sel)
+                                if await cell.count() > 0:
+                                    extracted_fields[field] = await cell.first.inner_text()
+                                    break
+                            except:
+                                continue
+                except Exception as e:
+                    logger.warning(f"[{site_name}] In-page extraction error: {e}")
 
             results.append({
                 "Source": site_name,
                 "Link": link_url,
-                "Content": full_content.strip(),
-                "_extracted_data": extracted_fields 
+                "Content": full_content.strip() if full_content else "",
+                "_extracted_data": extracted_fields
             })
             
     except Exception as e:
