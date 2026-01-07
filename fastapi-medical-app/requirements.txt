@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+pandas
+numpy
+scikit-learn
+openpyxl
+playwright
+openai
+python-dotenv
+asyncio
+playwright-stealth

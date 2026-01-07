@@ -1,0 +1,86 @@
+flowchart TD
+    %% --- STYLE DEFINITIONS ---
+    classDef db fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
+    classDef process fill:#f3e5f5,stroke:#4a148c,stroke-width:1px;
+    classDef decision fill:#fff9c4,stroke:#fbc02d,stroke-width:1px;
+    classDef staging fill:#ffebee,stroke:#b71c1c,stroke-width:2px,stroke-dasharray: 5 5;
+    classDef output fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px;
+    
+    %% --- CORE DATABASE ---
+    subgraph Core_System ["HỆ THỐNG LƯU TRỮ TRUNG TÂM"]
+        MainDB[("DATABASE CHÍNH\n(Thuốc - Bệnh - Link)\nCó trường: Note, Classification")]:::db
+        Warehouse[("DATA WAREHOUSE\n(Lịch sử/Thùng rác)\nLưu mọi bản ghi bị Ghi đè/Từ chối")]:::db
+    end
+
+    %% --- MODULE 1: QUẢN LÝ DỮ LIỆU ---
+    subgraph Data_Mgmt ["1. QUẢN LÝ THAY ĐỔI DỮ LIỆU (No Delete Policy)"]
+        InputData([Input: Dữ liệu Thuốc mới]) --> CheckExist{"Kiểm tra Tên & SĐK"}:::decision
+        
+        CheckExist -- "Hoàn toàn mới" --> AddNew[Thêm vào DB Chính]:::process
+        AddNew --> Log1[Log: Time, User] --> MainDB
+        
+        CheckExist -- "Trùng Tên hoặc SĐK" --> Compare[Hiển thị So sánh Cũ vs Mới]:::process
+        Compare --> StagingArea
+        
+        subgraph StagingArea ["Khu vực Staging"]
+            StagingNode[("Dữ liệu Nháp\n(Chờ xác nhận)")]:::staging
+            ManualCheck{"API Xác nhận\n(Ghi đè?)"}:::decision
+            
+            ManualCheck -- "Từ chối/Chờ" --> StagingNode
+            ManualCheck -- "Đồng ý" --> BackupProcess[Đẩy dữ liệu CŨ về Warehouse]:::process
+            BackupProcess --> Warehouse
+            ManualCheck -- "Đồng ý" --> Overwrite[Ghi đè dữ liệu MỚI vào DB]:::process
+            Overwrite --> Log2[Log: Time, User Modified] --> MainDB
+        end
+    end
+
+    %% --- MODULE 2: NHẬN DIỆN THUỐC ---
+    subgraph Identification ["2. THUẬT TOÁN NHẬN DIỆN THUỐC (Tiered Search)"]
+        Query([Input: Tên thuốc cần tìm]) --> Tier1{"Tầng 1: Database"}:::decision
+        
+        Tier1 -- "1. Khớp chính xác\n(Tên+SĐK+Verified)" --> Conf100[Kết quả: 100%]:::output
+        Tier1 -- "2. Vector/Fuzzy > 0.9\n(Có SĐK+Verified)" --> Conf90[Kết quả: 90%]:::output
+        
+        Tier1 -- "Không tìm thấy/Chưa đủ ĐK" --> Tier2[Tầng 2: Web Orchestrator]:::process
+        
+        subgraph Web_Search ["Xử lý Web Search"]
+            Crawler[Quét Web Đa nguồn] --> StopCond{"Điều kiện dừng?\n(3-4 thuốc có SĐK\nhoặc 3 web)"}:::decision
+            Crawler -- "Selector: XPath/CSS\n(BeautifulSoup)" --> HTMLParse["Trích xuất: Tên, SĐK, Chỉ định"]
+            HTMLParse -- "Clean & De-dup" --> MergeLogic[Gộp Dữ liệu]
+            MergeLogic --> FinalWebResult["Kết quả: 80%\n(Nguồn: Link list)"]:::output
+        end
+        
+        Tier2 --> Web_Search
+    end
+
+    %% --- MODULE 3: KNOWLEDGE GRAPH & ANALYSIS ---
+    subgraph Knowledge_Graph ["3. LIÊN KẾT & PHÂN TÍCH"]
+        
+        subgraph Link_Process ["Quy trình Liên kết Thuốc-Bệnh"]
+            InputLink(["Input Link:\nThuốc + Bệnh + Loại QH"]) --> CheckEntities{"Check Thuốc & Bệnh\ntrong DB?"}:::decision
+            
+            CheckEntities -- "Đã có & Verified" --> ActiveLink[Tạo Link ACTIVE]:::process
+            ActiveLink --> MainDB
+            
+            CheckEntities -- "Chưa có" --> StagingLink[Tạo STAGING LINK]:::staging
+            StagingLink -- "Auto Trigger" --> InputData
+            StagingLink -- "Chờ duyệt Thuốc/Bệnh" --> Activate[Kích hoạt khi Entity Verified]
+        end
+
+        subgraph Analysis_Engine ["Treatment Analysis API"]
+            ReqAnalysis([Input: List Thuốc x List Bệnh]) --> ScanMatrix[Quét Ma trận quan hệ]:::process
+            ScanMatrix <--> MainDB
+            
+            ScanMatrix --> ScoreLogic{Đánh giá Độ tin cậy}:::decision
+            
+            ScoreLogic -- "Link có sẵn + Verified\n(Điều trị/Hỗ trợ)" --> Trust100[Tin cậy: 100%]:::output
+            ScoreLogic -- "Link có sẵn + Pending" --> Trust90[Tin cậy: 90%]:::output
+            ScoreLogic -- "Từ chối chi trả/Không điều trị" --> TrustExclude[Loại trừ]:::output
+            ScoreLogic -- "Chưa có Link" --> AI_Inf["AI Suy luận:\nDựa trên Note & Chỉ định"]:::process
+            AI_Inf --> TrustAI[Kết quả AI]:::output
+        end
+    end
+
+    %% --- CONNECTIONS ---
+    Conf100 -.-> MainDB
+    Conf90 -.-> MainDB

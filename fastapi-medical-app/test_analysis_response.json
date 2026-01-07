@@ -1,0 +1,70 @@
+{
+  "drugs_info": [
+    {
+      "input_name": "Candesartan 16mg",
+      "official_name": "Candesartan 16mg",
+      "sdk": "Web Result (No SDK)",
+      "active_ingredient": "",
+      "usage": "Combined from 1 sources.",
+      "source": "Web Search (Advanced)",
+      "confidence": 0.8,
+      "source_urls": [
+        "N/A"
+      ],
+      "is_duplicate": false
+    },
+    {
+      "input_name": "Metformin 500mg",
+      "official_name": "Metformin 500mg",
+      "sdk": "Web Result (No SDK)",
+      "active_ingredient": "",
+      "usage": "Combined from 1 sources.",
+      "source": "Web Search (Advanced)",
+      "confidence": 0.8,
+      "source_urls": [
+        "N/A"
+      ],
+      "is_duplicate": false
+    }
+  ],
+  "diseases_info": [
+    {
+      "input_diagnosis": "Bệnh đái tháo đường không phụ thuộc insuline",
+      "icd10_input": "E11",
+      "official_name": "Bệnh đái tháo đường type 2",
+      "icd_code": "E11",
+      "chapter": "Đái tháo đường",
+      "source": "Database (Exact ICD)"
+    },
+    {
+      "input_diagnosis": "Bệnh Tăng huyết áp vô căn (nguyên phát)",
+      "icd10_input": "I10",
+      "official_name": "Tăng huyết áp vô căn (nguyên phát)",
+      "icd_code": "I10",
+      "chapter": "Bệnh lý tăng huyết áp",
+      "source": "Database (Exact ICD)"
+    }
+  ],
+  "ai_analysis": {
+    "results": [
+      {
+        "disease": "Bệnh đái tháo đường type 2 (E11)",
+        "medications": [
+          [
+            "Metformin 500mg (Web Result (No SDK))",
+            "Tên thuốc chứa 'Metformin', phù hợp với điều trị bệnh đái tháo đường."
+          ]
+        ]
+      },
+      {
+        "disease": "Tăng huyết áp vô căn (nguyên phát) (I10)",
+        "medications": [
+          [
+            "Candesartan 16mg (Web Result (No SDK))",
+            "Tên thuốc chứa 'Candesartan', phù hợp với điều trị tăng huyết áp."
+          ]
+        ]
+      }
+    ]
+  }
+}
