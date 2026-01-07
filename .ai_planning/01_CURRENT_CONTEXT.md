@@ -11,6 +11,8 @@
     - `fastapi-medical-app/`: Mã nguồn chính của ứng dụng FastAPI.
     - `app/database/medical.db`: Cơ sở dữ liệu SQLite chính.
     - `app/service/web_crawler.py`: Logic cào dữ liệu thuốc/bệnh (Playwright).
+    - `scripts/`: Chứa các kịch bản xử lý dữ liệu, refinery và công cụ hỗ trợ.
+    - `tests/`: Chứa toàn bộ các tệp tin kiểm thử và script verify.
 - **Trường dữ liệu mới**: Đã cập nhật bảng `drugs` với các trường `classification` và `note` phục vụ suy luận AI.
 - **Git Repository**: [tranchienrostek-afk/drug_icd_mapping](https://github.com/tranchienrostek-afk/drug_icd_mapping.git)
 
