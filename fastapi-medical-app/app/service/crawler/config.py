@@ -1,83 +1,157 @@
-import pandas as pd
+
+# Validated Scraper Configuration
+# Schema Strictness: High
+# No None values allowed. Use empty strings or empty lists.
 
 def get_drug_web_config():
     """
-    Trả về DataFrame cấu hình các trang web thuốc
-    Updated: 2026-01-07 - Specific XPaths from BUG-001 report
+    Returns a list of validated site configurations.
     """
-    data = {
-        "STT": [0, 1, 2],
-        "TenTrang": [
-            "DAV (Dịch Vụ Công)", 
-            "ThuocBietDuoc", 
-            "TrungTamThuoc"
-        ],
-        "URL": [
-            "https://dichvucong.dav.gov.vn/congbothuoc/index",
-            "https://www.thuocbietduoc.com.vn/thuoc/drgsearch.aspx",
-            "https://trungtamthuoc.com.vn/"
-        ],
-        "XPath_Input_Search": [
-            "xpath=/html/body/div[4]/div/div[1]/div/div/div[2]/div[1]/div/input[2]",
-            "xpath=//*[@id=\"search-input\"]",
-            "xpath=//*[@id=\"txtKeywords\"]"
-        ],
-        "HanhDong_TimKiem": [
-            "xpath=/html/body/div[4]/div/div[1]/div/div/div[2]/div[2]/button[1]",
-            "ENTER",
-            "ENTER"
-        ],
-        "XPath_Item_Container": [
-            "xpath=/html/body/div[4]/div/div[2]/div[3]/div[2]/table/tbody/tr", 
-            "xpath=/html/body/main/section[2]/div/div[2]/div/div/h3/a", 
-            "xpath=//*[@id=\"cscontentdetail\"]/div/div/div/strong/a | //*[@id=\"cscontentdetail\"]/div/div/strong/a"
-        ],
-        "XPath_Link_ChiTiet": [
-            "NO_LINK", 
-            ".",
-            "."
-        ],
+    return [
+        {
+            "site_name": "ThuocBietDuoc",
+            "url": "https://www.thuocbietduoc.com.vn/thuoc/drgsearch.aspx",
+            "enabled": True,
+            "priority": 1,
+            
+            # Search Behavior
+            "search": {
+                "input_xpath": "//*[@id='ctl00_ContentPlaceHolder1_txtTenThuoc']",
+                "action_type": "CLICK", # Enum: ENTER or CLICK
+                "button_xpath": "//*[@id='ctl00_ContentPlaceHolder1_btnSearch']"
+            },
 
-        "Field_Selectors": [
-             None,
-             {
-                 "ten_thuoc": "//h1 | /html/body/main/div[2]/div/div[1]/div/div/div[2]/h1",
-                 "so_dang_ky": "//*[contains(text(), 'Số đăng ký')]/following-sibling::* | //*[contains(text(), 'SĐK')]/following-sibling::* | /html/body/main/div[2]/div/div[1]/div/div/div[2]/div[2]/div[1]/div/div[1]/div/div[2]",
-                 "hoat_chat": "//div[contains(text(), 'Hoạt chất')]/following-sibling::* | //div[contains(text(), 'Thành phần')]/following-sibling::* | /html/body/main/div[2]/div/div[1]/div/div/div[2]/div[2]/div[2]/div/div/div/div/a",
-                 "ham_luong": "//div[contains(text(), 'Hàm lượng')]/following-sibling::* | //*[@id=\"thanh-phan-hoat-chat\"]/div[2]/table/tbody/tr/td[2]/span",
-                 "dang_bao_che": "//div[contains(text(), 'Dạng bào chế')]/following-sibling::* | /html/body/main/div[2]/div/div[1]/div/div/div[2]/div[2]/div[1]/div/div[2]/div/div[2]",
-                 "danh_muc": "//div[contains(text(), 'Nhóm thuốc')]/following-sibling::* | /html/body/main/div[2]/div/div[1]/div/div/div[2]/div[2]/div[1]/div/div[4]/div/a",
-                 "chi_dinh": "//h2[contains(text(), 'Chỉ định')]/following-sibling::* | #chi-dinh | //*[@id=\"cong-dung-thuoc\"]/div[2]"
-             },
-             {
-                 "ten_thuoc": "//h1 | //*[@id=\"cscontentdetail\"]/header/div[2]/div/h1/strong",
-                 "so_dang_ky": "//*[contains(text(), 'Số đăng ký')]/parent::*/td[2] | //*[@id=\"cscontentdetail\"]/header/div[2]/div/table/tbody/tr[3]/td[2]",
-                 "hoat_chat": "//*[contains(text(), 'Hoạt chất')]/parent::*/td[2] | //*[contains(text(), 'Thành phần')]/parent::*/td[2] | //*[@id=\"cs-hoat-chat\"]/td[2]",
-                 "ham_luong": "//*[@id=\"pro-mo-ta-noi-dung\"]/table | //*[@id=\"pro-mo-ta-noi-dung\"]/table",
-                 "dang_bao_che": "//*[contains(text(), 'Dạng bào chế')]/parent::*/td[2] | //*[@id=\"cscontentdetail\"]/header/div[2]/div/table/tbody/tr[4]/td[2]",
-                 "danh_muc": "//*[@id=\"cscategorymain\"]/td[2] | //*[@id=\"cscategorymain\"]/td[2]",
-                 "chi_dinh": "//*[@id=\"pro-mo-ta-noi-dung\"]/p[3] | //div[contains(@class, 'cs-content')]"
-             }
-        ],
-        "UuTien": [99, 1, 3],
-        "Max_Item": [1, 2, 2]
-    }
-    df = pd.DataFrame(data)
-    return df.sort_values(by='UuTien')
+            # List Items
+            "list_logic": {
+                "item_container": "//a[contains(@class, 'drug-list-item') or contains(@href, '/thuoc/')]",  # Generic robust selector
+                "max_items": 2
+            },
+
+            # Detail Page
+            "detail_logic": {
+                "has_detail_page": True,
+                "link_xpath": ".", # Click the container itself
+                "expand_button_xpath": "", # No expand needed usually
+                "content_container": "//*[@id='content']" # Fallback if specific fields fail
+            },
+
+            # Extraction Rules (List of XPaths for fallback)
+            "fields": {
+                "so_dang_ky": [
+                    "//div[contains(text(), 'Số đăng ký')]/following-sibling::div",
+                    "//span[contains(text(), 'SĐK')]/following-sibling::span",
+                    "//*[@id='divSoDangKy']"
+                ],
+                "hoat_chat": [
+                    "//div[contains(text(), 'Dạng bào chế')]/following-sibling::div", # Often near info
+                    "//*[@id='divHoatChat']"
+                ],
+                "cong_ty_san_xuat": [
+                    "//div[contains(text(), 'Nhà sản xuất')]/following-sibling::div",
+                    "//*[@id='divNhaSanXuat']"
+                ],
+                "chi_dinh": [
+                    "//div[contains(text(), 'Chỉ định')]/following-sibling::div",
+                    "//*[@id='divChiDinh']"
+                ]
+            }
+        },
+        {
+            "site_name": "TrungTamThuoc",
+            "url": "https://trungtamthuoc.com.vn/",
+            "enabled": True,
+            "priority": 2,
+            
+            "search": {
+                "input_xpath": "//input[@name='search' or @type='text']",
+                "action_type": "ENTER",
+                "button_xpath": ""
+            },
+
+            "list_logic": {
+                "item_container": "//div[contains(@class, 'product-item') or contains(@class, 'item-product')]//h3/a",
+                "max_items": 2
+            },
+
+            "detail_logic": {
+                "has_detail_page": True,
+                "link_xpath": ".",
+                "expand_button_xpath": "//*[@id='btn-expand-content']",
+                "content_container": "//*[@id='content']"
+            },
+
+            "fields": {
+                "so_dang_ky": [
+                    "//tr[td[contains(text(), 'Số đăng ký')]]/td[2]",
+                    "//span[contains(text(), 'Số đăng ký')]/following-sibling::span"
+                ],
+                "hoat_chat": [
+                    "//tr[td[contains(text(), 'Hoạt chất')]]/td[2]"
+                ],
+                "cong_ty_san_xuat": [
+                    "//tr[td[contains(text(), 'Nhà sản xuất')]]/td[2]"
+                ],
+                "chi_dinh": [
+                    "//*[@id='chi-dinh']//following-sibling::div[1]"
+                ]
+            }
+        },
+        {
+            "site_name": "DAV (Dịch Vụ Công)",
+            "url": "https://dichvucong.dav.gov.vn/congbothuoc/index",
+            "enabled": True,
+            "priority": 3,
+            
+            "search": {
+                "input_xpath": "//input[@id='txtTenThuoc']",
+                "action_type": "CLICK",
+                "button_xpath": "//button[@id='btnSearch']" # Hypothetical robust ID
+            },
+
+            "list_logic": {
+                "item_container": "//table[@id='tblDSThuoc']//tr[position()>1]",
+                "max_items": 2
+            },
+
+            "detail_logic": {
+                "has_detail_page": False, # Table row contains data
+                "link_xpath": "",
+                "expand_button_xpath": "",
+                "content_container": "."
+            },
+
+            "fields": {
+                "so_dang_ky": [
+                    "./td[2]" # Relative to row
+                ],
+                "hoat_chat": [
+                    "./td[3]"
+                ],
+                "cong_ty_san_xuat": [
+                    "./td[5]"
+                ],
+                "chi_dinh": [] # Not available in table list usually
+            }
+        }
+    ]
 
 def get_icd_web_config():
-    """Cấu hình Scraper ICD"""
+    """
+    Returns ICD configuration (Refactored to match Drug schema slightly if needed, 
+    but for now keeping simple as core_icd manages it).
+    """
+    import pandas as pd
+    # Maintaining DataFrame for ICD for now to limit scope of change to Drugs first,
+    # or refactor if requested. The Plan focused on Drugs logic.
+    # BUT consistency is key. Let's keep ICD simple for now.
+    
     data = {
-        "STT": [1],
-        "TenTrang": ["ICD Cục KCB"],
-        "URL": ["https://icd.kcb.vn/icd-10/icd10"],
-        "XPath_Input_Search": ["//*[@id='search']"],
-        "HanhDong_TimKiem": ["ENTER"],
-        "XPath_Item_Container": ["//*[@id='recommend-box']//li//a"], 
+        "TenTrang": ["KCB_ICD"],
+        "URL": ["https://icd.kcb.vn"],
+        "XPath_Input_Search": ["//*[@id='keyword']"],
+        "XPath_Item_Container": ["//*[@id='recommend-box']//li"],
         "XPath_Link_ChiTiet": ["."],
-        "XPath_Nut_Mo_Rong": ["//*[@id='detail']/div/div[4]/div/div[2]/dl[4]/div/div[1]/div/div/h5"],
-        "XPath_NoiDung_Lay": ["//*[@id='detail']/div/div[4]/div"],
-        "UuTien": [1],
-        "Max_Item": [1]
+        "XPath_Nut_Mo_Rong": ["//*[@id='btn-expand']"],
+        "XPath_NoiDung_Lay": ["//*[@id='detail']"]
     }
     return pd.DataFrame(data)

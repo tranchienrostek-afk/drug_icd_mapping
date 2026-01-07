@@ -9,7 +9,7 @@ async def scrape_drug_web_advanced(keyword):
     """
     Advanced Parallel Search & Merge
     """
-    config_df = get_drug_web_config()
+    config_list = get_drug_web_config()
     
     # --- Robust Keyword Cleaning ---
     clean_kw = re.sub(r'[-–():+/]', ' ', keyword)
@@ -30,8 +30,9 @@ async def scrape_drug_web_advanced(keyword):
             for kw_variant in variants:
                 logger.info(f"[WebAdvanced] Attempting search with: '{kw_variant}'")
                 tasks = []
-                for _, site in config_df.head(3).iterrows():
-                    tasks.append(scrape_single_site_drug(browser, site, kw_variant))
+                for site in config_list[:3]: # Take top 3 priority sites
+                    if site.get('enabled', True):
+                         tasks.append(scrape_single_site_drug(browser, site, kw_variant))
                 
                 results_lists = await asyncio.gather(*tasks, return_exceptions=True)
                 

@@ -1,14 +1,4 @@
 {
-  "ten_thuoc": "Paracetamol 500mg",
-  "so_dang_ky": "Web Result (No SDK)",
-  "hoat_chat": "",
-  "cong_ty_san_xuat": "",
-  "chi_dinh": "Combined from 1 sources.",
-  "classification": null,
-  "note": "",
-  "source_urls": [
-    "https://thuocbietduoc.com.vn/thuoc-53025/partamol-tab.aspx"
-  ],
-  "confidence": 0.8,
-  "source": "Web Search (Advanced)"
+  "status": "not_found",
+  "message": "No drugs found on web."
 }
