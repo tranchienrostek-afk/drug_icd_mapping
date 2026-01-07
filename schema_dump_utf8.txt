@@ -1,0 +1,284 @@
+--- Table: drugs ---
+  Col: (0, 'id', 'TEXT', 0, None, 0)
+  Col: (1, 'ten_thuoc', 'TEXT', 0, None, 0)
+  Col: (2, 'so_dang_ky', 'TEXT', 0, None, 0)
+  Col: (3, 'chi_dinh', 'TEXT', 0, None, 0)
+  Col: (4, 'duoc_luc_hoc', 'TEXT', 0, None, 0)
+  Col: (5, 'duoc_dong_hoc', 'TEXT', 0, None, 0)
+  Col: (6, 'tac_dung_phu', 'TEXT', 0, None, 0)
+  Col: (7, 'ref_id_nhom', 'TEXT', 0, None, 0)
+  Col: (8, 'created_at', 'TEXT', 0, None, 0)
+  Col: (9, 'is_active', 'TEXT', 0, None, 0)
+  Col: (10, 'slug', 'TEXT', 0, None, 0)
+  Col: (11, 'quy_cach', 'TEXT', 0, None, 0)
+  Col: (12, 'cong_ty_san_xuat', 'TEXT', 0, None, 0)
+  Col: (13, 'nuoc_san_xuat', 'TEXT', 0, None, 0)
+  Col: (14, 'cong_ty_dang_ky', 'TEXT', 0, None, 0)
+  Col: (15, 'loai_thuoc', 'TEXT', 0, None, 0)
+  Col: (16, 'hoat_chat', 'TEXT', 0, None, 0)
+  Col: (17, 'lieu_dung', 'TEXT', 0, None, 0)
+  Col: (18, 'trang_thai_hs', 'TEXT', 0, None, 0)
+  Col: (19, 'ham_luong_thuoc', 'TEXT', 0, None, 0)
+  Col: (20, 'ngay_phe_duyet', 'TEXT', 0, None, 0)
+  Col: (21, 'version', 'TEXT', 0, None, 0)
+  Col: (22, 'ngay_phe_duyet_date', 'TEXT', 0, None, 0)
+  Col: (23, 'created_date', 'TEXT', 0, None, 0)
+  Col: (24, 'nam_phe_duyet', 'TEXT', 0, None, 0)
+  Col: (25, 'is_verified', 'INTEGER', 0, None, 0)
+  Col: (26, 'search_text', 'TEXT', 0, None, 0)
+  Col: (27, 'tu_dong_nghia', 'TEXT', 0, None, 0)
+  Col: (28, 'nhom_duoc_ly', 'TEXT', 0, None, 0)
+  Col: (29, 'created_by', 'TEXT', 0, None, 0)
+  Col: (30, 'updated_at', 'TIMESTAMP', 0, None, 0)
+  Col: (31, 'updated_by', 'TEXT', 0, None, 0)
+  Col: (32, 'classification', 'TEXT', 0, None, 0)
+  Col: (33, 'note', 'TEXT', 0, None, 0)
+  SQL: CREATE TABLE "drugs" (
+"id" TEXT,
+  "ten_thuoc" TEXT,
+  "so_dang_ky" TEXT,
+  "chi_dinh" TEXT,
+  "duoc_luc_hoc" TEXT,
+  "duoc_dong_hoc" TEXT,
+  "tac_dung_phu" TEXT,
+  "ref_id_nhom" TEXT,
+  "created_at" TEXT,
+  "is_active" TEXT,
+  "slug" TEXT,
+  "quy_cach" TEXT,
+  "cong_ty_san_xuat" TEXT,
+  "nuoc_san_xuat" TEXT,
+  "cong_ty_dang_ky" TEXT,
+  "loai_thuoc" TEXT,
+  "hoat_chat" TEXT,
+  "lieu_dung" TEXT,
+  "trang_thai_hs" TEXT,
+  "ham_luong_thuoc" TEXT,
+  "ngay_phe_duyet" TEXT,
+  "version" TEXT,
+  "ngay_phe_duyet_date" TEXT,
+  "created_date" TEXT,
+  "nam_phe_duyet" TEXT,
+  "is_verified" INTEGER,
+  "search_text" TEXT
+, tu_dong_nghia TEXT, nhom_duoc_ly TEXT, created_by TEXT, updated_at TIMESTAMP, updated_by TEXT, classification TEXT, note TEXT)
+
+--- Table: drugs_fts ---
+  Col: (0, 'ten_thuoc', '', 0, None, 0)
+  Col: (1, 'hoat_chat', '', 0, None, 0)
+  Col: (2, 'cong_ty_san_xuat', '', 0, None, 0)
+  Col: (3, 'search_text', '', 0, None, 0)
+  SQL: CREATE VIRTUAL TABLE drugs_fts USING fts5(
+            ten_thuoc, 
+            hoat_chat, 
+            cong_ty_san_xuat, 
+            search_text,
+            content='drugs'
+        )
+
+--- Table: drugs_fts_data ---
+  Col: (0, 'id', 'INTEGER', 0, None, 1)
+  Col: (1, 'block', 'BLOB', 0, None, 0)
+  SQL: CREATE TABLE 'drugs_fts_data'(id INTEGER PRIMARY KEY, block BLOB)
+
+--- Table: drugs_fts_idx ---
+  Col: (0, 'segid', '', 1, None, 1)
+  Col: (1, 'term', '', 1, None, 2)
+  Col: (2, 'pgno', '', 0, None, 0)
+  SQL: CREATE TABLE 'drugs_fts_idx'(segid, term, pgno, PRIMARY KEY(segid, term)) WITHOUT ROWID
+
+--- Table: drugs_fts_docsize ---
+  Col: (0, 'id', 'INTEGER', 0, None, 1)
+  Col: (1, 'sz', 'BLOB', 0, None, 0)
+  SQL: CREATE TABLE 'drugs_fts_docsize'(id INTEGER PRIMARY KEY, sz BLOB)
+
+--- Table: drugs_fts_config ---
+  Col: (0, 'k', '', 1, None, 1)
+  Col: (1, 'v', '', 0, None, 0)
+  SQL: CREATE TABLE 'drugs_fts_config'(k PRIMARY KEY, v) WITHOUT ROWID
+
+--- Table: diseases ---
+  Col: (0, 'id', 'TEXT', 0, None, 0)
+  Col: (1, 'is_active', 'TEXT', 0, None, 0)
+  Col: (2, 'created_at', 'TEXT', 0, None, 0)
+  Col: (3, 'updated_at', 'INTEGER', 0, None, 0)
+  Col: (4, 'is_visible', 'TEXT', 0, None, 0)
+  Col: (5, 'sort_order', 'TEXT', 0, None, 0)
+  Col: (6, 'icd_code', 'TEXT', 0, None, 0)
+  Col: (7, 'icd_code_short', 'TEXT', 0, None, 0)
+  Col: (8, 'source_doc', 'TEXT', 0, None, 0)
+  Col: (9, 'chapter_name', 'TEXT', 0, None, 0)
+  Col: (10, 'slug', 'TEXT', 0, None, 0)
+  Col: (11, 'disease_name', 'TEXT', 0, None, 0)
+  Col: (12, 'ref_id', 'TEXT', 0, None, 0)
+  Col: (13, 'source_doc_extra', 'TEXT', 0, None, 0)
+  Col: (14, 'effective_date', 'INTEGER', 0, None, 0)
+  Col: (15, 'version', 'INTEGER', 0, None, 0)
+  Col: (16, 'search_text', 'TEXT', 0, None, 0)
+  SQL: CREATE TABLE "diseases" (
+"id" TEXT,
+  "is_active" TEXT,
+  "created_at" TEXT,
+  "updated_at" INTEGER,
+  "is_visible" TEXT,
+  "sort_order" TEXT,
+  "icd_code" TEXT,
+  "icd_code_short" TEXT,
+  "source_doc" TEXT,
+  "chapter_name" TEXT,
+  "slug" TEXT,
+  "disease_name" TEXT,
+  "ref_id" TEXT,
+  "source_doc_extra" TEXT,
+  "effective_date" INTEGER,
+  "version" INTEGER,
+  "search_text" TEXT
+)
+
+--- Table: diseases_fts ---
+  Col: (0, 'icd_code', '', 0, None, 0)
+  Col: (1, 'disease_name', '', 0, None, 0)
+  Col: (2, 'slug', '', 0, None, 0)
+  Col: (3, 'search_text', '', 0, None, 0)
+  SQL: CREATE VIRTUAL TABLE diseases_fts USING fts5(
+            icd_code,
+            disease_name,
+            slug,
+            search_text,
+            content='diseases'
+        )
+
+--- Table: diseases_fts_data ---
+  Col: (0, 'id', 'INTEGER', 0, None, 1)
+  Col: (1, 'block', 'BLOB', 0, None, 0)
+  SQL: CREATE TABLE 'diseases_fts_data'(id INTEGER PRIMARY KEY, block BLOB)
+
+--- Table: diseases_fts_idx ---
+  Col: (0, 'segid', '', 1, None, 1)
+  Col: (1, 'term', '', 1, None, 2)
+  Col: (2, 'pgno', '', 0, None, 0)
+  SQL: CREATE TABLE 'diseases_fts_idx'(segid, term, pgno, PRIMARY KEY(segid, term)) WITHOUT ROWID
+
+--- Table: diseases_fts_docsize ---
+  Col: (0, 'id', 'INTEGER', 0, None, 1)
+  Col: (1, 'sz', 'BLOB', 0, None, 0)
+  SQL: CREATE TABLE 'diseases_fts_docsize'(id INTEGER PRIMARY KEY, sz BLOB)
+
+--- Table: diseases_fts_config ---
+  Col: (0, 'k', '', 1, None, 1)
+  Col: (1, 'v', '', 0, None, 0)
+  SQL: CREATE TABLE 'diseases_fts_config'(k PRIMARY KEY, v) WITHOUT ROWID
+
+--- Table: drug_staging ---
+  Col: (0, 'id', 'INTEGER', 0, None, 1)
+  Col: (1, 'ten_thuoc', 'TEXT', 1, None, 0)
+  Col: (2, 'hoat_chat', 'TEXT', 0, None, 0)
+  Col: (3, 'cong_ty_san_xuat', 'TEXT', 0, None, 0)
+  Col: (4, 'so_dang_ky', 'TEXT', 0, None, 0)
+  Col: (5, 'chi_dinh', 'TEXT', 0, None, 0)
+  Col: (6, 'tu_dong_nghia', 'TEXT', 0, None, 0)
+  Col: (7, 'search_text', 'TEXT', 0, None, 0)
+  Col: (8, 'status', 'TEXT', 0, "'pending'", 0)
+  Col: (9, 'created_at', 'TIMESTAMP', 0, 'CURRENT_TIMESTAMP', 0)
+  Col: (10, 'created_by', 'TEXT', 0, None, 0)
+  Col: (11, 'conflict_type', 'TEXT', 0, None, 0)
+  Col: (12, 'conflict_id', 'INTEGER', 0, None, 0)
+  Col: (13, 'classification', 'TEXT', 0, None, 0)
+  Col: (14, 'note', 'TEXT', 0, None, 0)
+  SQL: CREATE TABLE drug_staging (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    ten_thuoc TEXT NOT NULL,
+                    hoat_chat TEXT,
+                    cong_ty_san_xuat TEXT,
+                    so_dang_ky TEXT,
+                    chi_dinh TEXT,
+                    tu_dong_nghia TEXT,
+                    search_text TEXT,
+                    status TEXT DEFAULT 'pending', -- pending, approved, rejected
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    created_by TEXT,
+                    conflict_type TEXT, -- 'sdk', 'name'
+                    conflict_id INTEGER -- ID of the existing drug in 'drugs' table
+                , classification TEXT, note TEXT)
+
+--- Table: sqlite_sequence ---
+  Col: (0, 'name', '', 0, None, 0)
+  Col: (1, 'seq', '', 0, None, 0)
+  SQL: CREATE TABLE sqlite_sequence(name,seq)
+
+--- Table: drug_history ---
+  Col: (0, 'id', 'INTEGER', 0, None, 1)
+  Col: (1, 'original_drug_id', 'INTEGER', 0, None, 0)
+  Col: (2, 'ten_thuoc', 'TEXT', 0, None, 0)
+  Col: (3, 'hoat_chat', 'TEXT', 0, None, 0)
+  Col: (4, 'cong_ty_san_xuat', 'TEXT', 0, None, 0)
+  Col: (5, 'so_dang_ky', 'TEXT', 0, None, 0)
+  Col: (6, 'chi_dinh', 'TEXT', 0, None, 0)
+  Col: (7, 'tu_dong_nghia', 'TEXT', 0, None, 0)
+  Col: (8, 'archived_at', 'TIMESTAMP', 0, 'CURRENT_TIMESTAMP', 0)
+  Col: (9, 'archived_by', 'TEXT', 0, None, 0)
+  SQL: CREATE TABLE drug_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    original_drug_id INTEGER,
+                    ten_thuoc TEXT,
+                    hoat_chat TEXT,
+                    cong_ty_san_xuat TEXT,
+                    so_dang_ky TEXT,
+                    chi_dinh TEXT,
+                    tu_dong_nghia TEXT,
+                    archived_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    archived_by TEXT
+                )
+
+--- Table: drug_staging_history ---
+  Col: (0, 'id', 'INTEGER', 0, None, 1)
+  Col: (1, 'original_staging_id', 'INTEGER', 0, None, 0)
+  Col: (2, 'ten_thuoc', 'TEXT', 0, None, 0)
+  Col: (3, 'hoat_chat', 'TEXT', 0, None, 0)
+  Col: (4, 'cong_ty_san_xuat', 'TEXT', 0, None, 0)
+  Col: (5, 'so_dang_ky', 'TEXT', 0, None, 0)
+  Col: (6, 'chi_dinh', 'TEXT', 0, None, 0)
+  Col: (7, 'tu_dong_nghia', 'TEXT', 0, None, 0)
+  Col: (8, 'action', 'TEXT', 0, None, 0)
+  Col: (9, 'archived_at', 'TIMESTAMP', 0, 'CURRENT_TIMESTAMP', 0)
+  Col: (10, 'archived_by', 'TEXT', 0, None, 0)
+  SQL: CREATE TABLE drug_staging_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    original_staging_id INTEGER,
+                    ten_thuoc TEXT,
+                    hoat_chat TEXT,
+                    cong_ty_san_xuat TEXT,
+                    so_dang_ky TEXT,
+                    chi_dinh TEXT,
+                    tu_dong_nghia TEXT,
+                    action TEXT, -- 'rejected', 'cleared', 'approved' (if we keep approved ones too?) -> User asked for rejected/cleared to be traced.
+                    archived_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    archived_by TEXT
+                )
+
+--- Table: drug_disease_links ---
+  Col: (0, 'id', 'INTEGER', 0, None, 1)
+  Col: (1, 'drug_id', 'INTEGER', 0, None, 0)
+  Col: (2, 'disease_id', 'INTEGER', 0, None, 0)
+  Col: (3, 'sdk', 'TEXT', 0, None, 0)
+  Col: (4, 'icd_code', 'TEXT', 0, None, 0)
+  Col: (5, 'treatment_note', 'TEXT', 0, None, 0)
+  Col: (6, 'is_verified', 'INTEGER', 0, '0', 0)
+  Col: (7, 'created_at', 'TIMESTAMP', 0, 'CURRENT_TIMESTAMP', 0)
+  Col: (8, 'coverage_type', 'TEXT', 0, None, 0)
+  Col: (9, 'created_by', 'TEXT', 0, None, 0)
+  Col: (10, 'status', 'TEXT', 0, "'active'", 0)
+  SQL: CREATE TABLE drug_disease_links (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            drug_id INTEGER,
+                            disease_id INTEGER,
+                            sdk TEXT,
+                            icd_code TEXT,
+                            treatment_note TEXT,
+                            is_verified INTEGER DEFAULT 0,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            coverage_type TEXT,
+                            created_by TEXT,
+                            status TEXT DEFAULT 'active'
+                        )
+

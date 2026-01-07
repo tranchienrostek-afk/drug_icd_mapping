@@ -1,0 +1,58 @@
+// Overview ERD for AZINSU Database
+// Use with: https://dbdiagram.io
+
+Table drugs {
+  id text [pk]
+  ten_thuoc text
+  so_dang_ky text
+  hoat_chat text
+  ham_luong_thuoc text
+  chi_dinh text
+  tac_dung_phu text
+  nhom_duoc_ly text
+  is_verified integer
+  status text [default: 'active']
+  created_at timestamp
+  updated_at timestamp
+  classification text
+  note text
+}
+
+Table diseases {
+  id text [pk]
+  icd_code text
+  disease_name text
+  chapter_name text
+  is_active text
+  created_at text
+}
+
+Table drug_disease_links {
+  id integer [pk, increment]
+  drug_id integer [ref: > drugs.id]
+  disease_id integer [ref: > diseases.id]
+  sdk text
+  icd_code text
+  treatment_note text
+  is_verified integer [default: 0]
+  created_at timestamp
+  status text [default: 'active']
+}
+
+Table drug_staging {
+  id integer [pk, increment]
+  ten_thuoc text
+  hoat_chat text
+  so_dang_ky text
+  status text [default: 'pending']
+  conflict_type text
+  conflict_id integer
+  created_at timestamp
+}
+
+Table drug_history {
+  id integer [pk, increment]
+  original_drug_id integer
+  ten_thuoc text
+  archived_at timestamp
+}
