@@ -4,10 +4,11 @@ from playwright.async_api import async_playwright
 from .utils import logger, parse_drug_info
 from .config import get_drug_web_config
 from .core_drug import scrape_single_site_drug
+from .google_search import GoogleSearchService
 
-async def scrape_drug_web_advanced(keyword):
+async def scrape_drug_web_advanced(keyword, **kwargs):
     """
-    Advanced Parallel Search & Merge
+    Advanced Parallel Search & Merge with Google Search Fallback
     """
     config_list = get_drug_web_config()
     
@@ -25,14 +26,50 @@ async def scrape_drug_web_advanced(keyword):
             variants.append(simplified)
 
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
+        # Allow headless toggle for debugging
+        headless_mode = kwargs.get('headless', True) # Support passing via function arg
+        display_mode = False if headless_mode is False else True # Logic inversion fix: launch(headless=True) is default
+        
+        # Better: just use a variable
+        is_headless = True
+        if "headless" in kwargs:
+             is_headless = kwargs["headless"]
+        
+        browser = await p.chromium.launch(
+            headless=is_headless,
+            args=[
+                '--disable-blink-features=AutomationControlled',
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-gpu'
+            ]
+        )
         try:
+            # --- GOOGLE SEARCH FIRST STRATEGY (NEW) ---
+            google_service = GoogleSearchService(domain="thuocbietduoc.com.vn")
+            
             for kw_variant in variants:
                 logger.info(f"[WebAdvanced] Attempting search with: '{kw_variant}'")
+                
+                # Try Google Search first for ThuocBietDuoc
+                direct_url = None
+                try:
+                    logger.info(f"[GoogleSearch] Searching for direct URL...")
+                    direct_url = google_service.find_drug_url(kw_variant)
+                except Exception as e:
+                    logger.warning(f"[GoogleSearch] Failed: {e}")
+                
                 tasks = []
-                for site in config_list[:3]: # Take top 3 priority sites
+                for site in config_list: # Support all enabled sites
                     if site.get('enabled', True):
-                         tasks.append(scrape_single_site_drug(browser, site, kw_variant))
+                        # If Google found a URL for ThuocBietDuoc, use it
+                        if site['site_name'] == 'ThuocBietDuoc' and direct_url:
+                            logger.info(f"[WebAdvanced] Using Google-found URL for {site['site_name']}")
+                            tasks.append(scrape_single_site_drug(browser, site, kw_variant, direct_url=direct_url))
+                        else:
+                            # Original search path for other sites
+                            tasks.append(scrape_single_site_drug(browser, site, kw_variant))
                 
                 results_lists = await asyncio.gather(*tasks, return_exceptions=True)
                 
@@ -121,16 +158,19 @@ async def scrape_drug_web_advanced(keyword):
     if ham_luong: note_parts.append(f"Hàm lượng: {ham_luong}")
     final_note = " | ".join(note_parts)
 
-    final_chi_dinh = best_candidate.get('chi_dinh')
-    if not final_chi_dinh:
-         final_chi_dinh = f"Combined from {len(sources)} sources."
+    # Combine long fields properly
+    final_chi_dinh = " | ".join(filter(None, {i.get('chi_dinh') for i in best_group if i.get('chi_dinh')}))
+    final_chong_chi_dinh = " | ".join(filter(None, {i.get('chong_chi_dinh') for i in best_group if i.get('chong_chi_dinh')}))
+    final_lieu_dung = " | ".join(filter(None, {i.get('lieu_dung') for i in best_group if i.get('lieu_dung')}))
 
     final_data = {
         "ten_thuoc": final_name,
         "so_dang_ky": final_sdk,
         "hoat_chat": " | ".join(filter(None, hoat_chat_set)),
         "cong_ty_san_xuat": " | ".join(filter(None, cong_ty_set)),
-        "chi_dinh": final_chi_dinh,
+        "chi_dinh": final_chi_dinh or best_candidate.get('chi_dinh'),
+        "chong_chi_dinh": final_chong_chi_dinh or best_candidate.get('chong_chi_dinh'),
+        "lieu_dung": final_lieu_dung or best_candidate.get('lieu_dung'),
         "classification": dang_bao_che,
         "note": final_note, 
         "source_urls": list(sources),

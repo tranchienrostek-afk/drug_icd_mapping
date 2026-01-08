@@ -1,5 +1,3 @@
-<!-- Quy tắc viết test -->
-
 # TESTING & QUALITY ASSURANCE RULES
 
 ## 1. Testing Framework
@@ -20,3 +18,18 @@
 
 ## 5. Verification Scripts
 - Các script kiểm tra nhanh (không phải unit test) được đặt trong thư mục `tests/` nhưng không có tiền tố `test_`. Các script này phục vụ việc kiểm tra dữ liệu thực tế (Real-world data debugging).
+
+## MERGE
+# TESTING RULES & TDD WORKFLOW
+**Framework:** `pytest`
+**Mocking:** `unittest.mock` hoặc `pytest-mock`
+
+## Quy trình TDD bắt buộc (Red-Green-Refactor)
+1.  **RED (Viết Test trước):** Trước khi viết bất kỳ logic nào, phải viết một Test Case mô tả hành vi mong muốn. Test này **phải fail** ban đầu.
+2.  **GREEN (Implement):** Viết code logic tối thiểu (minimal code) để test chuyển sang màu xanh (Pass). Không viết dư thừa (YAGNI).
+3.  **REFACTOR:** Tối ưu hóa code sau khi đã pass test.
+
+## Cấu trúc Test
+- Tên file test: `tests/test_<module_name>.py`
+- Tên hàm test: `test_<function_name>_<scenario>`
+- Mỗi test case phải độc lập (Isolated).

@@ -1,6 +1,7 @@
 fastapi
 uvicorn
 pandas
+googlesearch-python
 numpy
 scikit-learn
 openpyxl

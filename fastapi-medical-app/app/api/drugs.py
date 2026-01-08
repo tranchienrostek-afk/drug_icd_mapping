@@ -153,6 +153,8 @@ async def identify_drugs(payload: DrugRequest):
                     "sdk": info.get('so_dang_ky'),
                     "active_ingredient": info.get('hoat_chat'),
                     "usage": info.get('chi_dinh', 'N/A'),
+                    "contraindications": info.get('chong_chi_dinh'),
+                    "dosage": info.get('lieu_dung'),
                     "source": info.get('source', "Web"),
                     "confidence": info.get('confidence', 0.8),
                     "source_urls": info.get('source_urls', [])

@@ -56,6 +56,20 @@
 
 ---
 
+### [CR-004] Chia nhỏ file C:\Users\Admin\Desktop\drug_icd_mapping\fastapi-medical-app\app\service\web_crawler.py ra thành nhiều file con. Để đảm bảo quy tắc không có file nào trên 200 dòng code.
+- **Thời gian:** 07/01/2026 13:10
+- **Người yêu cầu:** Trần Văn Chiến
+- **Phân hệ:** Design pattern
+- **Nội dung thay đổi:**
+  - File đó hiện tại quá dài, vượt quá quy định 200 dòng code.
+  - Điều này dẫn đến khó fixbug, khó debug, khó bảo trì.
+  - Gom theo các hàm có mối quan hệ mật thiết với nhau vào một chương trình
+  - Luôn ghi báo cáo chi tiết khi hoàn thiện xong
+  - Trước khi thực hiện chiến thuật thay đổi cũng cần tạo task tại thư mục: C:\Users\Admin\Desktop\drug_icd_mapping\.ai_planning\active_tasks
+- **Lý do:** Tối ưu quá trình phát triển sản phẩm
+
+
+
 ### [CR-XXX] Tiêu đề thay đổi ngắn gọn
 - **Thời gian:** DD/MM/YYYY HH:MM
 - **Người yêu cầu:** Tên người yêu cầu
