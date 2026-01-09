@@ -1,0 +1,68 @@
+[2026-01-07 15:37:59.565667] PAGE FAIL 1500 | Page.goto: Timeout 30000ms exceeded.
+Call log:
+  - navigating to "https://thuocbietduoc.com.vn/thuoc/drgsearch.aspx?page=1500", waiting until "domcontentloaded"
+
+[2026-01-07 15:38:29.585996] PAGE FAIL 1501 | Page.goto: Timeout 30000ms exceeded.
+Call log:
+  - navigating to "https://thuocbietduoc.com.vn/thuoc/drgsearch.aspx?page=1501", waiting until "domcontentloaded"
+
+[2026-01-07 15:38:59.593502] PAGE FAIL 1502 | Page.goto: Timeout 30000ms exceeded.
+Call log:
+  - navigating to "https://thuocbietduoc.com.vn/thuoc/drgsearch.aspx?page=1502", waiting until "domcontentloaded"
+
+[2026-01-07 15:39:29.599248] PAGE FAIL 1503 | Page.goto: Timeout 30000ms exceeded.
+Call log:
+  - navigating to "https://thuocbietduoc.com.vn/thuoc/drgsearch.aspx?page=1503", waiting until "domcontentloaded"
+
+[2026-01-07 15:39:59.616271] PAGE FAIL 1504 | Page.goto: Timeout 30000ms exceeded.
+Call log:
+  - navigating to "https://thuocbietduoc.com.vn/thuoc/drgsearch.aspx?page=1504", waiting until "domcontentloaded"
+
+[2026-01-07 15:40:29.621557] PAGE FAIL 1505 | Page.goto: Timeout 30000ms exceeded.
+Call log:
+  - navigating to "https://thuocbietduoc.com.vn/thuoc/drgsearch.aspx?page=1505", waiting until "domcontentloaded"
+
+[2026-01-07 15:40:59.628354] PAGE FAIL 1506 | Page.goto: Timeout 30000ms exceeded.
+Call log:
+  - navigating to "https://thuocbietduoc.com.vn/thuoc/drgsearch.aspx?page=1506", waiting until "domcontentloaded"
+
+[2026-01-07 15:41:29.634122] PAGE FAIL 1507 | Page.goto: Timeout 30000ms exceeded.
+Call log:
+  - navigating to "https://thuocbietduoc.com.vn/thuoc/drgsearch.aspx?page=1507", waiting until "domcontentloaded"
+
+[2026-01-07 15:41:59.642405] PAGE FAIL 1508 | Page.goto: Timeout 30000ms exceeded.
+Call log:
+  - navigating to "https://thuocbietduoc.com.vn/thuoc/drgsearch.aspx?page=1508", waiting until "domcontentloaded"
+
+[2026-01-07 15:42:29.654680] PAGE FAIL 1509 | Page.goto: Timeout 30000ms exceeded.
+Call log:
+  - navigating to "https://thuocbietduoc.com.vn/thuoc/drgsearch.aspx?page=1509", waiting until "domcontentloaded"
+
+[2026-01-07 15:42:59.665629] PAGE FAIL 1510 | Page.goto: Timeout 30000ms exceeded.
+Call log:
+  - navigating to "https://thuocbietduoc.com.vn/thuoc/drgsearch.aspx?page=1510", waiting until "domcontentloaded"
+
+[2026-01-07 15:43:29.679325] PAGE FAIL 1511 | Page.goto: Timeout 30000ms exceeded.
+Call log:
+  - navigating to "https://thuocbietduoc.com.vn/thuoc/drgsearch.aspx?page=1511", waiting until "domcontentloaded"
+
+[2026-01-07 15:43:59.693272] PAGE FAIL 1512 | Page.goto: Timeout 30000ms exceeded.
+Call log:
+  - navigating to "https://thuocbietduoc.com.vn/thuoc/drgsearch.aspx?page=1512", waiting until "domcontentloaded"
+
+[2026-01-07 15:44:29.706208] PAGE FAIL 1513 | Page.goto: Timeout 30000ms exceeded.
+Call log:
+  - navigating to "https://thuocbietduoc.com.vn/thuoc/drgsearch.aspx?page=1513", waiting until "domcontentloaded"
+
+[2026-01-07 15:44:59.719488] PAGE FAIL 1514 | Page.goto: Timeout 30000ms exceeded.
+Call log:
+  - navigating to "https://thuocbietduoc.com.vn/thuoc/drgsearch.aspx?page=1514", waiting until "domcontentloaded"
+
+[2026-01-07 15:45:29.728022] PAGE FAIL 1515 | Page.goto: Timeout 30000ms exceeded.
+Call log:
+  - navigating to "https://thuocbietduoc.com.vn/thuoc/drgsearch.aspx?page=1515", waiting until "domcontentloaded"
+
+[2026-01-07 15:45:59.734281] PAGE FAIL 1516 | Page.goto: Timeout 30000ms exceeded.
+Call log:
+  - navigating to "https://thuocbietduoc.com.vn/thuoc/drgsearch.aspx?page=1516", waiting until "domcontentloaded"
+

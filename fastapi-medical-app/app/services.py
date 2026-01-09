@@ -469,8 +469,30 @@ class DrugDbEngine:
                 if row:
                      return {"data": dict(row), "confidence": 0.95, "source": f"Database (Partial{' Fallback' if variant != raw_query else ''})"}
 
-            # 3. VECTOR SEARCH (Always use Normalized Query)
+            # 2.5. FUZZY MATCH (RapidFuzz)
             self._load_vector_cache()
+            try:
+                from rapidfuzz import process, fuzz
+                if self.drug_cache:
+                     if not hasattr(self, 'fuzzy_names') or not self.fuzzy_names:
+                         self.fuzzy_names = [d['ten_thuoc'] for d in self.drug_cache]
+                     
+                     # token_sort_ratio handles "Paracetamol 500mg" vs "500mg Paracetamol" well
+                     fuzzy_res = process.extractOne(raw_query, self.fuzzy_names, scorer=fuzz.token_sort_ratio)
+                     if fuzzy_res:
+                         match, score, idx = fuzzy_res
+                         if score >= 85.0:
+                             match_data = self.drug_cache[idx]
+                             cursor.execute("SELECT * FROM drugs WHERE rowid = ?", (match_data['rowid'],))
+                             full_row = cursor.fetchone()
+                             if full_row:
+                                 return {"data": dict(full_row), "confidence": 0.88, "source": f"Database (Fuzzy {score:.1f})"}
+            except Exception as e:
+                # Debug print if needed
+                pass
+
+            # 3. VECTOR SEARCH (Always use Normalized Query)
+            # self._load_vector_cache() # optimized: called above matches
             if self.vectorizer and self.tfidf_matrix is not None:
                 # Debug: print(f"Vector searching for: '{db_normalized_query}'")
                 query_vec = self.vectorizer.transform([db_normalized_query])
@@ -480,7 +502,7 @@ class DrugDbEngine:
                     best_idx = np.argmax(cosine_sim)
                     best_score = cosine_sim[best_idx]
                     
-                    if best_score > 0.85: 
+                    if best_score > 0.75: # Optimized Threshold from 0.85 
                         match_data = self.drug_cache[best_idx]
                         # Fetch full details
                         cursor.execute("SELECT * FROM drugs WHERE rowid = ?", (match_data['rowid'],))
