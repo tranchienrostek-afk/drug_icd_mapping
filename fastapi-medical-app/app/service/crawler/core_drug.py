@@ -2,6 +2,12 @@ import time
 import asyncio
 from .utils import logger, SCREENSHOT_DIR
 from .extractors import extract_drug_details
+from .stealth_config import (
+    STEALTH_INIT_SCRIPT, 
+    get_random_user_agent,
+    human_pause,
+    simulate_human_behavior
+)
 
 async def try_selectors(page, selectors, timeout=5000):
     """
@@ -35,6 +41,25 @@ async def try_selectors(page, selectors, timeout=5000):
             continue
     
     return None, None
+
+async def register_auto_popups(page, selectors=None):
+    """
+    Register auto-closing handlers for popups.
+    """
+    potential_selectors = [
+        "button[aria-label='Close']",
+        ".close-button",
+        ".modal-close",
+        "span:text('X')",
+        "button:text('Đóng')",
+        "div[class*='popup'] .close",
+        "#close-popup"
+    ]
+    if selectors:
+        potential_selectors = selectors + potential_selectors
+    
+    # Function disabled/reverted
+    pass
 
 async def handle_popups(page, selectors=None):
     """
@@ -77,16 +102,22 @@ async def scrape_single_site_drug(browser, site_config, keyword, direct_url=None
     popup_selectors = site_config.get('popup_selectors', [])
     
     context = await browser.new_context(
-        user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+        user_agent=get_random_user_agent(),  # Stealth: Random UA
         ignore_https_errors=True,
-        viewport={'width': 1280, 'height': 800}
+        viewport={'width': 1920, 'height': 1080},  # Larger viewport
+        locale="vi-VN",
+        timezone_id="Asia/Ho_Chi_Minh",
     )
+    
+    # Stealth: Inject anti-detection script
+    await context.add_init_script(STEALTH_INIT_SCRIPT)
     
     page = await context.new_page()
     
     # Block heavy resources
+    # Block heavy resources
     async def block_resources(route):
-        if route.request.resource_type in ["image", "font", "media"]:
+        if route.request.resource_type in ["image", "font", "media", "other"]:
             await route.abort()
         else:
             await route.continue_()
@@ -99,6 +130,8 @@ async def scrape_single_site_drug(browser, site_config, keyword, direct_url=None
         if direct_url:
             logger.info(f"[{site_name}] Navigating directly to: {direct_url}")
             await page.goto(direct_url, timeout=60000, wait_until="domcontentloaded")
+            await page.goto(direct_url, timeout=60000, wait_until="domcontentloaded")
+            # await register_auto_popups(page, popup_selectors)
             await handle_popups(page, popup_selectors)
             
             full_content, extracted_fields = await extract_drug_details(page, site_config, site_name, logger)
@@ -113,6 +146,8 @@ async def scrape_single_site_drug(browser, site_config, keyword, direct_url=None
         else:
             logger.info(f"[{site_name}] Navigating to search: {url}")
             await page.goto(url, timeout=60000, wait_until="domcontentloaded")
+            await page.goto(url, timeout=60000, wait_until="domcontentloaded")
+            # await register_auto_popups(page, popup_selectors)
             await handle_popups(page, popup_selectors)
             
             search_cfg = site_config.get('search', {})
@@ -138,6 +173,7 @@ async def scrape_single_site_drug(browser, site_config, keyword, direct_url=None
             
             # Stabilization wait after search
             logger.info(f"[{site_name}] Waiting for results to load...")
+            await asyncio.sleep(4) 
             await asyncio.sleep(4) 
             await handle_popups(page, popup_selectors)
             
@@ -180,6 +216,8 @@ async def scrape_single_site_drug(browser, site_config, keyword, direct_url=None
                         detail_page = await context.new_page()
                         await detail_page.route("**/*", block_resources)
                         await detail_page.goto(link_url, timeout=60000, wait_until="domcontentloaded")
+                        await detail_page.goto(link_url, timeout=60000, wait_until="domcontentloaded")
+                        # await register_auto_popups(detail_page, popup_selectors)
                         await handle_popups(detail_page, popup_selectors)
                         
                         content, fields = await extract_drug_details(detail_page, site_config, site_name, logger)

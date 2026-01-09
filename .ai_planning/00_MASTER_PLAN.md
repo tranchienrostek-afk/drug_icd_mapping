@@ -36,3 +36,24 @@ Hệ thống quản lý dữ liệu thuốc và liên kết bệnh lý (ICD-10),
 ## IV. Tài liệu Tham khảo
 - [Requirements Document](file:///c:/Users/Admin/Desktop/drug_icd_mapping/requirements_document.txt)
 - [Walkthrough Documentation](file:///C:/Users/Admin/.gemini/antigravity/brain/e39346ff-4b82-4a84-bec9-634d2c7b18fd/walkthrough.md)
+
+
+PHASE 2:
+Nhận xét Phase 1: Chốt quá trình search và normalization_name. Chưa cần tối ưu thêm.
+giờ tiến hành triển khai giai đoạn 2
+Phase 2: Làm giàu dữ liệu. Hiện tôi đã thu thập được rất nhiều dữ liệu về thuốc. 
+Tiến hành tiền xử lý, chuẩn hoá và đưa vào database
+Đây là giai đoạn vô cùng tuyệt vời và thể hiện giá trị tư vấn, trích xuất thông tin tuyệt vời của hệ thống AI. Khi đã được trang bị, nhồi cho nguồn dữ liệu chất lượng.
+
+Yêu cầu điều chỉnh master plan để báo cáo toàn bộ phase 1
+Lên kế hoạch cho phase 2
+
+Liên kết với nhà khoa học AI, đội nghiệp vụ và tech leader để lên kế hoạch.
+C:\Users\Admin\Desktop\drug_icd_mapping\.multi agents\02_ai_scientist.md
+C:\Users\Admin\Desktop\drug_icd_mapping\.multi agents\01_business_analyst.md
+C:\Users\Admin\Desktop\drug_icd_mapping\.multi agents\03_tech_leader.md
+
+Xây dựng cho tôi folder để lưu đống dữ liệu mới này ở dạng csv
+Dữ liệu cần khai phá, phân tích và chuẩn hoá
+Sau đó tôi sẽ thêm dữ liệu vào, đội ngũ phân tích và tiến hành lên kế hoạch thực hiện chi tiết
+Và sẽ còn vô số dữ liệu quý mà tôi sẽ cung cấp cho bạn

@@ -5,8 +5,7 @@
 
 def get_drug_web_config():
     """
-    Returns a list of validated site configurations for multi-site drug search.
-    Updated: 2026-01-08 - Synchronized with verified knowledge scripts.
+    Returns a list of site configurations synchronized with 'knowledge for agents'.
     """
     return [
         {
@@ -32,9 +31,19 @@ def get_drug_web_config():
                 "content_container": "#content"
             },
             "fields": {
-                "so_dang_ky": ["//div[contains(text(), 'Số đăng ký')]/following-sibling::div"],
+                # From thuocbietduoc_extract.py: 
+                # //div[div[text()='Số đăng ký']]/div[contains(@class,'font-semibold')]
+                # //div[contains(text(),'Số đăng ký')]/following-sibling::div
+                "so_dang_ky": [
+                    "xpath=//div[div[text()='Số đăng ký']]/div[contains(@class,'font-semibold')]", 
+                    "xpath=//div[contains(text(),'Số đăng ký')]/following-sibling::div"
+                ],
+                # From ingredient-content
                 "hoat_chat": [".ingredient-content"],
-                "chi_dinh": ["#chi-dinh"]
+                "dang_bao_che": ["xpath=//div[div[text()='Dạng bào chế']]/div[contains(@class,'font-semibold')]"],
+                "nhom_thuoc": ["xpath=//div[div[text()='Danh mục']]//a"],
+                "chi_dinh": ["#section-1"],
+                "chong_chi_dinh": ["#section-2"]
             },
             "popup_selectors": [".close-button", "button[aria-label='Close']"]
         },
@@ -62,8 +71,15 @@ def get_drug_web_config():
                 "content_container": "main"
             },
             "fields": {
-                "so_dang_ky": ["//tr[td[contains(text(), 'Số đăng ký')]]/td[2]"],
-                "hoat_chat": ["//tr[td[contains(text(), 'Hoạt chất')]]/td[2]"]
+                # From trungtamthuoc_extract.py: 
+                # //tr[td[contains(normalize-space(), '{label}')]]/td[last()]
+                "so_dang_ky": ["xpath=//tr[td[contains(normalize-space(), 'Số đăng ký')]]/td[last()]"],
+                "hoat_chat": ["xpath=//tr[td[contains(normalize-space(), 'Hoạt chất')]]/td[last()]"],
+                "dang_bao_che": ["xpath=//tr[td[contains(normalize-space(), 'Dạng bào chế')]]/td[last()]"],
+                "quy_cach": ["xpath=//tr[td[contains(normalize-space(), 'Quy cách đóng gói')]]/td[last()]"],
+                "nhom_thuoc": ["xpath=//tr[td[contains(normalize-space(), 'Chuyên mục')]]/td[last()]"],
+                "thanh_phan": ["xpath=//h2[contains(normalize-space(), 'Thành phần')]/following-sibling::*[preceding-sibling::h2[1][contains(normalize-space(), 'Thành phần')]]"],
+                "cong_dung": ["xpath=//h2[contains(normalize-space(), 'Công dụng')]/following-sibling::*[preceding-sibling::h2[1][contains(normalize-space(), 'Công dụng')]]"]
             },
             "popup_selectors": ["#close-ads", ".modal-close"]
         },
@@ -86,9 +102,15 @@ def get_drug_web_config():
                 "content_container": "main"
             },
             "fields": {
-                "so_dang_ky": ["xpath=//div[p[text()='Số đăng ký']]//span", "xpath=//div[p[contains(.,'Số đăng ký')]]//span"],
-                "hoat_chat": ["xpath=//div[p[text()='Thành phần']]//span"],
-                "ten_thuoc": ['h1[data-test="product_name"]']
+                # From nhathuoclongchau_extract.py:
+                # div.flex has p:text("Label") -> div.flex-1 span/p
+                # Use strict xpath to emulate this robustly
+                "so_dang_ky": ["xpath=//div[contains(@class,'flex')][descendant::p[contains(text(),'Số đăng ký')]]//div[contains(@class,'flex-1')]//span"],
+                "hoat_chat": ["xpath=//div[contains(@class,'flex')][descendant::p[contains(text(),'Thành phần')]]//div[contains(@class,'flex-1')]//p"],
+                "dang_bao_che": ["xpath=//div[contains(@class,'flex')][descendant::p[contains(text(),'Dạng bào chế')]]//div[contains(@class,'flex-1')]//span"],
+                "ten_thuoc": ['h1[data-test="product_name"]'],
+                "mo_ta": ["#detail-content-0"],
+                "cong_dung": ["#detail-content-2"]
             },
             "popup_selectors": ["button:text('Đóng')", "span:text('X')"]
         },
@@ -111,11 +133,14 @@ def get_drug_web_config():
                 "content_container": "."
             },
             "fields": {
-                "so_dang_ky": ["td:nth-child(4)"], 
-                "ten_thuoc": ["td:nth-child(6)"],
-                "hoat_chat": ["td:nth-child(10)"],
-                "ham_luong": ["td:nth-child(11)"],
-                "cong_ty_san_xuat": ["td:nth-child(22)"]
+                # From dichvucong_search_extract.py directly mapped to columns
+                # 3: so_gplh (SDK), 5: ten_thuoc, 9: hoat_chat, ...
+                "so_dang_ky": ["td:nth-child(4)"], # Script says index 3 (0-based) -> 4th child
+                "ten_thuoc": ["td:nth-child(6)"], # Script 5 -> 6th child
+                "hoat_chat": ["td:nth-child(10)"], # Script 9 -> 10th child
+                "ham_luong": ["td:nth-child(11)"], # Script 10 -> 11th child
+                "cong_ty_san_xuat": ["td:nth-child(22)"], # Script 21 -> 22nd child
+                "nuoc_sx": ["td:nth-child(23)"]
             }
         }
     ]

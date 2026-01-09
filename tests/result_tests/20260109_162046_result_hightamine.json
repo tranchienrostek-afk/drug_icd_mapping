@@ -1,0 +1,6 @@
+{
+  "search_term": "Hightamine",
+  "found": false,
+  "details": {},
+  "error": "Locator.fill: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\"#search-input, input[name='text-search'], input.search-input\").first\n"
+}

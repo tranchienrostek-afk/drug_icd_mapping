@@ -1,0 +1,6 @@
+{
+  "search_term": "Hightamine",
+  "found": false,
+  "details": {},
+  "error": "Page.goto: net::ERR_ABORTED at https://trungtamthuoc.com/orthomol-arthroplus\nCall log:\n  - navigating to \"https://trungtamthuoc.com/orthomol-arthroplus\", waiting until \"load\"\n"
+}

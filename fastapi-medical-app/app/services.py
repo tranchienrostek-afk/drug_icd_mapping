@@ -9,7 +9,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 from playwright.async_api import async_playwright
 from openai import AzureOpenAI
-from app.utils import normalize_text
+from app.utils import normalize_text, normalize_for_matching
 from dotenv import load_dotenv
 from app.service.crawler import search_icd_online
 
@@ -439,16 +439,20 @@ class DrugDbEngine:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
-        normalized_query = query_name.strip()
+        # 1. Prepare variants
+        raw_query = query_name.strip()
+        db_normalized_query = normalize_for_matching(query_name) # Remove accents, special chars
         
-        # Try multiple variants for better lookup
-        search_variants = [normalized_query]
+        # Priority: Raw (for exact DB match) -> Normalized (for loose DB match)
+        search_variants = []
+        if raw_query: search_variants.append(raw_query)
+        if db_normalized_query and db_normalized_query != raw_query.lower():
+            search_variants.append(db_normalized_query)
         
-        # If it has a dose/composite (e.g. "Name 500mg"), add "Name" as fallback
-        if " " in normalized_query:
-            # Take everything before the last space as a potential name-only search
-            parts = normalized_query.rsplit(' ', 1)
-            if len(parts) > 1 and re.search(r'\d', parts[1]): # If second part looks like a dose
+        # If it has a dose/composite in normalized form, try to split
+        if " " in db_normalized_query:
+            parts = db_normalized_query.rsplit(' ', 1)
+            if len(parts) > 1 and re.search(r'\d', parts[1]):
                  search_variants.append(parts[0])
 
         try:
@@ -457,25 +461,26 @@ class DrugDbEngine:
                 cursor.execute("SELECT * FROM drugs WHERE ten_thuoc = ? AND is_verified=1 AND so_dang_ky IS NOT NULL", (variant,))
                 row = cursor.fetchone()
                 if row:
-                    return {"data": dict(row), "confidence": 1.0, "source": f"Database (Exact{' Fallback' if variant != normalized_query else ''})"}
+                    return {"data": dict(row), "confidence": 1.0, "source": f"Database (Exact{' Fallback' if variant != raw_query else ''})"}
 
                 # 2. PARTIAL MATCH
                 cursor.execute("SELECT * FROM drugs WHERE ten_thuoc LIKE ? AND is_verified=1 AND so_dang_ky IS NOT NULL", (f"%{variant}%",))
                 row = cursor.fetchone()
                 if row:
-                     return {"data": dict(row), "confidence": 0.95, "source": f"Database (Partial{' Fallback' if variant != normalized_query else ''})"}
+                     return {"data": dict(row), "confidence": 0.95, "source": f"Database (Partial{' Fallback' if variant != raw_query else ''})"}
 
-            # 3. VECTOR SEARCH
+            # 3. VECTOR SEARCH (Always use Normalized Query)
             self._load_vector_cache()
             if self.vectorizer and self.tfidf_matrix is not None:
-                query_vec = self.vectorizer.transform([normalized_query])
+                # Debug: print(f"Vector searching for: '{db_normalized_query}'")
+                query_vec = self.vectorizer.transform([db_normalized_query])
                 cosine_sim = cosine_similarity(query_vec, self.tfidf_matrix).flatten()
                 
                 if cosine_sim.size > 0:
                     best_idx = np.argmax(cosine_sim)
                     best_score = cosine_sim[best_idx]
                     
-                    if best_score > 0.85: # Threshold of 0.9 might be too strict, 0.85 is reasonable for high conf
+                    if best_score > 0.85: 
                         match_data = self.drug_cache[best_idx]
                         # Fetch full details
                         cursor.execute("SELECT * FROM drugs WHERE rowid = ?", (match_data['rowid'],))
