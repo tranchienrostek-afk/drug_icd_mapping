@@ -2,9 +2,13 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from app.api import drugs, diseases, analysis, admin
+from app.middlewares.logging_middleware import LogMiddleware
 import os
 
 app = FastAPI(title="Medical API System", version="1.0.0")
+
+# Register middleware
+app.add_middleware(LogMiddleware)
 
 # Mount Static Files
 static_dir = os.path.join(os.path.dirname(__file__), "static")

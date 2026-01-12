@@ -56,19 +56,80 @@
 
 ---
 
-### [CR-004] Chia nhỏ file C:\Users\Admin\Desktop\drug_icd_mapping\fastapi-medical-app\app\service\web_crawler.py ra thành nhiều file con. Để đảm bảo quy tắc không có file nào trên 200 dòng code.
+### [CR-004] Chia nhỏ file code source
 - **Thời gian:** 07/01/2026 13:10
 - **Người yêu cầu:** Trần Văn Chiến
 - **Phân hệ:** Design pattern
 - **Nội dung thay đổi:**
-  - File đó hiện tại quá dài, vượt quá quy định 200 dòng code.
-  - Điều này dẫn đến khó fixbug, khó debug, khó bảo trì.
-  - Gom theo các hàm có mối quan hệ mật thiết với nhau vào một chương trình
-  - Luôn ghi báo cáo chi tiết khi hoàn thiện xong
-  - Trước khi thực hiện chiến thuật thay đổi cũng cần tạo task tại thư mục: C:\Users\Admin\Desktop\drug_icd_mapping\.ai_planning\active_tasks
-- **Lý do:** Tối ưu quá trình phát triển sản phẩm
+  - Chia nhỏ file `web_crawler.py` thành `core_drug.py`, `main.py`, v.v. để đảm bảo quy tắc <200 dòng.
+- **Lý do:** Tối ưu quá trình bảo trì và debug.
 
+---
 
+### [CR-005] Import DataCore & Schema Migration
+- **Thời gian:** 09/01/2026 14:30
+- **Người yêu cầu:** AI Architect
+- **Phân hệ:** Database / Data Pipeline
+- **Nội dung thay đổi:**
+  - Nhập liệu 65,026 bản ghi thuốc từ DataCore.
+  - Thêm cột `source_urls` vào bảng `drugs`.
+  - Triển khai thuật toán "Smart Upsert" (In-memory Hash Map) để tăng tốc độ import.
+- **Lý do:** Làm giàu dữ liệu nền tảng cho hệ thống.
+
+---
+
+### [CR-006] Nâng cấp Thuật toán Tìm kiếm (Hybrid Search v2.0)
+- **Thời gian:** 09/01/2026 18:30
+- **Người yêu cầu:** AI Scientist
+- **Phân hệ:** Backend / Search Engine
+- **Nội dung thay đổi:**
+  - **Integration:** Tích hợp thư viện `rapidfuzz` để xử lý Fuzzy Search (bắt lỗi chính tả).
+  - **Optimization:** Loại bỏ `so_dang_ky` khỏi Vector Index để giảm nhiễu Semantic Search.
+  - **Tuning:** Hạ Threshold Vector Search xuống **0.75**.
+- **Lý do:** Cải thiện Accuracy và Hit Rate khi tìm kiếm trên tập dữ liệu lớn (65k records).
+
+---
+
+### [CR-007] Tích hợp Browser MCP Agent vào Server (Task 027)
+- **Thời gian:** 12/01/2026 13:00
+- **Người yêu cầu:** Admin
+- **Phân hệ:** Backend / Agent Service / Docker
+- **Nội dung thay đổi:**
+  - **Thêm mới:** Service `agent_search_service.py` (Class `BrowserAgentRunner`) để chạy Browser Agent headless.
+  - **Thêm mới:** API Endpoint `POST /api/v1/drugs/agent-search` để kích hoạt tìm kiếm tự động qua AI Agent.
+  - **Dockerfile:** Chuyển sang base image `mcr.microsoft.com/playwright/python:v1.40.0-jammy` để hỗ trợ Playwright.
+  - **dependencies:** Thêm `mcp-agent`, `playwright` vào `requirements.txt`.
+- **Lý do:** Bổ sung khả năng "Exhaustive Search" cho thuốc bằng AI Agent, bypass được các trang bị chặn Google.
+
+---
+
+### [CR-008] Triển khai Token Tracking Service (Task 028)
+- **Thời gian:** 12/01/2026 13:30
+- **Người yêu cầu:** Admin
+- **Phân hệ:** Monitoring / Cost Management
+- **Nội dung thay đổi:**
+  - **Thêm mới:** Module `app/core/token_tracker.py` với class `TokenTracker`.
+  - **Chức năng:** Ghi log mỗi lần gọi Azure OpenAI, bao gồm: Context, Model, Input/Output Tokens, Cost (USD).
+  - **Output:** File JSON hàng ngày tại `logs/trace_token_openai/DD_MM_YYYY_total_tokens.json`.
+  - **Tích hợp:** Hook vào `patched_request_completion_task` trong Agent Service.
+- **Lý do:** Giám sát chi tiết chi phí OpenAI, tránh phát sinh ngoài kiểm soát.
+
+---
+
+### [CR-009] Triển khai API Logging Middleware (Task 029)
+- **Thời gian:** 12/01/2026 13:30
+- **Người yêu cầu:** Admin
+- **Phân hệ:** Backend / Logging & Auditing
+- **Nội dung thay đổi:**
+  - **Thêm mới:** Module `app/middlewares/logging_middleware.py` với class `LogMiddleware`.
+  - **Chức năng:** Chặn mọi request API, ghi lại Request Body, Response Body, Duration, Client IP.
+  - **Output:** File log hàng ngày tại `logs/logs_api/DD_MM_YYYY_api.log`.
+  - **Đăng ký:** Middleware được đăng ký trong `app/main.py`.
+- **Lý do:** Tăng cường khả năng debug và audit toàn bộ luồng dữ liệu API.
+
+---
+
+## 📋 TEMPLATE CHO LOG MỚI (COPY & PASTE)
 
 ### [CR-XXX] Tiêu đề thay đổi ngắn gọn
 - **Thời gian:** DD/MM/YYYY HH:MM

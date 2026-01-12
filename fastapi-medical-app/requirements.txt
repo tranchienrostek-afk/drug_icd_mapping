@@ -5,9 +5,8 @@ googlesearch-python
 numpy
 scikit-learn
 openpyxl
-playwright
 openai
 python-dotenv
-asyncio
-playwright-stealth
+playwright
 rapidfuzz
+mcp-agent

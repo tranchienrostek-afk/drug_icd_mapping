@@ -187,3 +187,18 @@ async def identify_drugs(payload: DrugRequest):
              results.append({"input_name": drug_raw, "status": "Not Found"})
              
     return {"results": results}
+
+from app.service.agent_search_service import run_agent_search
+
+@router.post("/agent-search")
+async def search_drug_agent(payload: DrugRequest):
+    """
+    Kích hoạt AI Agent (Browser MCP) để tìm kiếm thuốc exhaustive (bypass Google blocking).
+    Input: Danh sách thuốc (nhưng chỉ xử lý thuốc đầu tiên để tiết kiệm resource).
+    """
+    if not payload.drugs:
+        raise HTTPException(status_code=400, detail="No drug name provided")
+    
+    drug_name = payload.drugs[0]
+    result = await run_agent_search(drug_name)
+    return result

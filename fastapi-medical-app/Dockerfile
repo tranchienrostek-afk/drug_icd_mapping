@@ -1,12 +1,13 @@
-# Sửa dòng này:
-FROM python:3.11-slim
+# Use official Playwright image which includes Python and all browser dependencies
+FROM mcr.microsoft.com/playwright/python:v1.40.0-jammy
 
 WORKDIR /app
 
-# Các phần còn lại giữ nguyên
 COPY requirements.txt .
 
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Install specific browser if needed (the image has them, but verifying versions)
 RUN playwright install --with-deps chromium
 
 COPY . .

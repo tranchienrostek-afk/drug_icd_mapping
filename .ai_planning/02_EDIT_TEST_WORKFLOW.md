@@ -1,18 +1,22 @@
-# EDIT-TEST LOOP WORKFLOW (X MINS)
+# EDIT-TEST LOOP WORKFLOW (Scaling Phase)
 
-**Rule:** Không viết code implementation nếu chưa có failing test.
+**Context:** Giai đoạn tối ưu hóa Search Engine & Xử lý Dữ liệu lớn (65k records).
+**Mục tiêu:** Đảm bảo độ chính xác (Accuracy) và Hiệu năng (Performance).
 
-## STEP 1: RED (X mins)
-- Tạo file test mới trong `tests/` dựa trên `test_template_tdd.py`.
-- Định nghĩa Input/Output mong muốn.
-- Chạy test -> BẮT BUỘC PHẢI FAIL.
+## STEP 1: DEFINE BENCHMARK (Test Case)
+- Xác định trường hợp cần test (Ví dụ: Lỗi chính tả "Paretamol", Thuốc mới "Sufentanil").
+- Thêm case vào danh sách kiểm thử trong `scripts/benchmark_search.py`.
+- Chạy: `python scripts/benchmark_search.py`.
+- **Expect:** Kết quả hiện tại (có thể Fail hoặc Slow do Web Fallback).
 
-## STEP 2: GREEN (X mins)
-- Viết code tối thiểu (Minimal code) trong `app/` để pass test.
-- Không tối ưu, không over-engineer.
-- Chạy lại test -> PHẢI PASS.
+## STEP 2: IMPLEMENT / OPTIMIZE (Code)
+- **Logic:** Điều chỉnh `app/services.py` (Search Logic, Thresholds).
+- **Index:** Nếu cần sửa cấu trúc tìm kiếm, update `run_import_datacore.py` và chạy lại Import.
+- **Dependency:** Nếu thêm thư viện mới, update `requirements.txt` và chạy `docker-compose up -d --build`.
 
-## STEP 3: REFACTOR (X mins)
-- Clean code, thêm type hints, tách hàm nếu cần.
-- Chạy lại test lần cuối để đảm bảo không break logic.
-- Commit code.
+## STEP 3: VERIFY & MONITOR (Check)
+- Chạy lại: `python scripts/benchmark_search.py`.
+- **Target:**
+    - Thời gian phản hồi < 1s (cho Data có sẵn).
+    - Confidence score > 0.85 (Vector/Fuzzy).
+- **Health Check:** Kiểm tra `docker stats` (RAM usage) và `docker-compose logs` để đảm bảo hệ thống ổn định.

@@ -38,3 +38,6 @@ app/logs/
 .notebook/
 .vibe/
 node_modules/
+
+# Sensitive Knowledge Base (DO NOT PUSH)
+knowledge for agent/

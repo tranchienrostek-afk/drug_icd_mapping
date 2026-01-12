@@ -6,54 +6,33 @@ Hệ thống quản lý dữ liệu thuốc và liên kết bệnh lý (ICD-10),
 
 ## II. Roadmap & Trạng thái (Status Tracker)
 
-### Giai đoạn 1: Xây dựng Nền tảng (Completed)
+### Giai đoạn 1: Xây dựng Nền tảng (Completed ✅)
 - [x] Thiết lập Database SQLite (`medical.db`)
-- [x] API nhận diện thuốc (Identity API - Tầng Database)
-- [x] Web Crawler cơ bản (Tìm kiếm thông tin thuốc từ các nguồn DAV, TBD)
+- [x] API nhận diện thuốc cơ bản
+- [x] Web Crawler (Playwright)
 
-### Giai đoạn 2: Nâng cấp & Kiểm thử (Completed)
-- [x] **Task 004**: Kiểm thử API Phân tích điều trị (Treatment Analysis)
-- [x] **Task 005**: Rà soát PRD (Requirements) & Validate Schema dữ liệu
-- [x] **Task 006**: Thiết lập Git, GitHub cho dự án
+### Giai đoạn 2: Bùng nổ Dữ liệu (Completed ✅)
+- [x] **Import DataCore:** Tiếp nhận và xử lý 65,026 bản ghi thuốc sạch vào Database (Task 022).
+- [x] **Smart Upsert:** Cơ chế update thông minh, tránh trùng lặp dữ liệu lớn (Task 021).
+- [x] **Schema Migration:** Tự động mở rộng cấu trúc dữ liệu (`source_urls`).
 
-### Giai đoạn 3: Tối ưu hóa & Mở rộng (In Progress)
-- [ ] Tối ưu hóa Web Crawler (Stop Early, Dynamic Selectors)
-- [ ] Hoàn thiện Dashboard Admin cho Staging Data
-- [ ] Mở rộng Knowledge Graph liên kết Thuốc - Triệu chứng
+### Giai đoạn 3: Nâng cấp Trí tuệ (In Progress 🚀)
+- [x] **Algorithm Upgrade:** Tối ưu hóa Vector Search (loại bỏ nhiễu SDK) & Tích hợp RapidFuzz (Task 018).
+- [ ] **Performance Monitor:** Theo dõi RAM usage khi Data tăng trưởng.
+- [ ] **Knowledge Graph:** Xây dựng liên kết Thuốc - Bệnh (ICD-10).
 
 ## III. Danh sách Task (.ai_planning)
 
-### Hoàn thành (Completed)
-1. `task_004_api_testing_bugfix.md`: Sửa lỗi trích xuất ICD và Deduplication.
-2. `task_005_prd_review_validation.md`: Rà soát yêu cầu kỹ thuật.
-3. `task_006_git_github_setup.md`: Quản lý phiên bản.
+### Mới Hoàn thành (Recently Completed)
+1.  `task_022_import_datacore.md`: Import 65k dữ liệu Kho báu (DataCore).
+2.  `task_021_import_and_deduplicate.md`: Xây dựng module Smart Upsert & Data Refinery.
+3.  `task_018_optimize_search_algorithm.md`: Nâng cấp thuật toán tìm kiếm (Fuzzy/Vector).
+4.  `task_020_data_refinery_logic.md`: Chuẩn hóa dữ liệu thô.
 
 ### Đang thực hiện (Active)
-1. `task_001_setup_db.md`: Quản lý cấu trúc dữ liệu.
-2. `task_002_api_identify.md`: Tối ưu hóa API nhận diện.
-3. `task_003_web_crawler_basic.md`: Nâng cấp scraper.
+1.  `task_023_knowledge_graph.md` (Planned): Liên kết dữ liệu thuốc với ICD.
+2.  `task_019_monitor_performance.md` (Planned): Giám sát hệ thống.
 
 ## IV. Tài liệu Tham khảo
-- [Requirements Document](file:///c:/Users/Admin/Desktop/drug_icd_mapping/requirements_document.txt)
-- [Walkthrough Documentation](file:///C:/Users/Admin/.gemini/antigravity/brain/e39346ff-4b82-4a84-bec9-634d2c7b18fd/walkthrough.md)
-
-
-PHASE 2:
-Nhận xét Phase 1: Chốt quá trình search và normalization_name. Chưa cần tối ưu thêm.
-giờ tiến hành triển khai giai đoạn 2
-Phase 2: Làm giàu dữ liệu. Hiện tôi đã thu thập được rất nhiều dữ liệu về thuốc. 
-Tiến hành tiền xử lý, chuẩn hoá và đưa vào database
-Đây là giai đoạn vô cùng tuyệt vời và thể hiện giá trị tư vấn, trích xuất thông tin tuyệt vời của hệ thống AI. Khi đã được trang bị, nhồi cho nguồn dữ liệu chất lượng.
-
-Yêu cầu điều chỉnh master plan để báo cáo toàn bộ phase 1
-Lên kế hoạch cho phase 2
-
-Liên kết với nhà khoa học AI, đội nghiệp vụ và tech leader để lên kế hoạch.
-C:\Users\Admin\Desktop\drug_icd_mapping\.multi agents\02_ai_scientist.md
-C:\Users\Admin\Desktop\drug_icd_mapping\.multi agents\01_business_analyst.md
-C:\Users\Admin\Desktop\drug_icd_mapping\.multi agents\03_tech_leader.md
-
-Xây dựng cho tôi folder để lưu đống dữ liệu mới này ở dạng csv
-Dữ liệu cần khai phá, phân tích và chuẩn hoá
-Sau đó tôi sẽ thêm dữ liệu vào, đội ngũ phân tích và tiến hành lên kế hoạch thực hiện chi tiết
-Và sẽ còn vô số dữ liệu quý mà tôi sẽ cung cấp cho bạn
+- [Báo cáo Giải pháp 09/01/2026](file:///C:/Users/Admin/Desktop/drug_icd_mapping/.ai_planning/.implementation_rules/.ai_reports/2026-01/drug_solution_report_20260109.md)
+- [Tech Blueprint](file:///C:/Users/Admin/Desktop/drug_icd_mapping/.memory/03_tech_blueprint.md)

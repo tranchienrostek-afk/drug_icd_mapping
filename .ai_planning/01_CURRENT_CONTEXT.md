@@ -2,29 +2,32 @@
 <!-- Context hiện tại (AI đọc file này trước tiên) -->
 
 ## 1. Trạng thái hiện tại
-- **Giai đoạn**: Giai đoạn 3: Tối ưu hóa & Mở rộng.
-- **Tiến độ**: Đã hoàn thành kiểm thử API lõi, rà soát yêu cầu kỹ thuật (PRD) và thiết lập môi trường Git/GitHub.
-- **Mục tiêu gần nhất**: Tối ưu hóa hiệu suất Web Crawler và hoàn thiện luồng dữ liệu Staging.
+- **Giai đoạn**: Giai đoạn 3: Tối ưu hoá & Mở rộng (Scaling Phase).
+- **Tiến độ**: 
+    - Đã hoàn tất nhập liệu **65,000 bản ghi thuốc** (DataCore) vào DB.
+    - Đã nâng cấp thuật toán Search (Vector + Fuzzy) để xử lý dữ liệu lớn.
+    - Đã thiết lập môi trường Git/GitHub và CI/CD cơ bản (Docker Rebuild).
+- **Mục tiêu gần nhất**: Ổn định hóa hệ thống sau khi import lượng lớn dữ liệu và giám sát hiệu năng.
 
-## 2. Thông tin Kỹ thuật Quan trọng
-- **Cấu trúc Thư mục**:
-    - `fastapi-medical-app/`: Mã nguồn chính của ứng dụng FastAPI.
-    - `app/database/medical.db`: Cơ sở dữ liệu SQLite chính.
-    - `app/service/web_crawler.py`: Logic cào dữ liệu thuốc/bệnh (Playwright).
-    - `scripts/`: Chứa các kịch bản xử lý dữ liệu, refinery và công cụ hỗ trợ.
-    - `tests/`: Chứa toàn bộ các tệp tin kiểm thử và script verify.
-- **Trường dữ liệu mới**: Đã cập nhật bảng `drugs` với các trường `classification` và `note` phục vụ suy luận AI.
-- **Git Repository**: [tranchienrostek-afk/drug_icd_mapping](https://github.com/tranchienrostek-afk/drug_icd_mapping.git)
+## 2. Thông tin Kỹ thuật Quan trọng (Architecture v2.0)
+- **Cấu trúc Dữ liệu mới**:
+    - Bảng `drugs` có thêm cột `source_urls` (Task 021/022).
+    - `search_text` index đã được tối ưu (loại bỏ SDK, chuẩn hóa không dấu) phục vụ Vector Search.
+- **Search Stack**:
+    - **Backend**: `app/services.py` -> `DrugDbEngine` (Core Logic).
+    - **Libs**: `rapidfuzz` (mới thêm), `sklearn` (TF-IDF), `playwright`.
+    - **Vector Cache**: Load toàn bộ 65k thuốc vào RAM lúc khởi động (~100MB).
+- **File System**: Đã dọn dẹp các script cũ vào thư mục `archive/` để giữ workspace gọn gàng.
 
 ## 3. Các vấn đề cần lưu ý (Critical Notes)
-- **Web Crawler**: Selector thường xuyên thay đổi, mã nguồn hiện tại đang sử dụng bộ chọn mới nhất (đã tối ưu hóa hơn so với PRD).
-- **Deduplication**: Logic gộp thuốc đã được sửa lỗi cho trường hợp thuốc không có số đăng ký (SDK).
-- **Inference**: AI sử dụng dữ liệu từ trường `note` (thẩm định viên) làm căn cứ ưu tiên khi không tìm thấy liên kết cứng trong DB.
+- **Rebuild Docker**: Do thêm thư viện mới (`rapidfuzz`, `playwrightdeps`), việc rebuild container mất nhiều thời gian (~15p).
+- **RAM Usage**: Cần chú ý dung lượng RAM server do cơ chế load Cache Vector in-memory.
+- **Search Threshold**: Vector Search Threshold hiện tại là **0.75**, Fuzzy Threshold là **85.0**.
 
 ## 4. Ưu tiên Công việc Tiếp theo
-1. **Task 003 (Active)**: Cải thiện Web Crawler (Cơ chế Stop Early khi tìm đủ kết quả).
-2. **Task 002 (Active)**: Tối ưu hóa API Identify để giảm độ trễ (Latency).
-3. **Data Refinery**: Làm sạch dữ liệu rác trong bảng `drug_staging`.
+1.  **Monitor (Task 019)**: Theo dõi độ ổn định của API với 65k dữ liệu.
+2.  **Web Crawler (Task 003)**: Duy trì như phương án dự phòng (Fallback).
+3.  **Knowledge Graph (Task 023)**: Bắt đầu nghiên cứu liên kết thuốc với ICD-10 dựa trên dữ liệu `chi_dinh` phong phú vừa import.
 
 ---
-*Tài liệu này được cập nhật tự động sau mỗi phiên làm việc để đảm bảo AI nắm bắt được context mới nhất.*
+*Tài liệu đã được cập nhật ngày 09/01/2026 sau sự kiện "DataCore Import".*
