@@ -1,4 +1,0 @@
-Test Date: 
-Model: gpt-5-mini
-Input: 1+1 = ?
-Output: 1 + 1 = 2.

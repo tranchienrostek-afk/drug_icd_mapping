@@ -7,19 +7,21 @@
 ---
 
 ## ⚠️ QUY TẮC VÀNG (GOLDEN RULES) - BẮT BUỘC ĐỌC
+
 *Để đảm bảo tính toàn vẹn và khả năng truy vết (traceability), toàn bộ thành viên team phải tuân thủ tuyệt đối:*
 
-1.  **NGUYÊN TẮC "BẤT BIẾN" (IMMUTABILITY):** Tuyệt đối **KHÔNG ĐƯỢC XÓA hoặc SỬA** các log cũ phía trên. Mọi thay đổi đều phải viết tiếp xuống dưới cùng (Append-only).
-2.  **XỬ LÝ SAI SÓT:** Nếu một log trước đó bị sai hoặc cần hủy bỏ, hãy tạo một log mới bên dưới với nội dung *"Revert (Đảo ngược) thay đổi [Mã ID]..."* thay vì xóa dòng cũ.
-3.  **LÝ DO LÀ QUAN TRỌNG NHẤT:** Luôn ghi rõ mục *"Lý do/Rationale"*. Chúng ta cần biết *tại sao* thay đổi logic này để tránh lặp lại sai lầm trong tương lai.
-4.  **TRỌNG TÂM NGHIỆP VỤ:** Chỉ log những thay đổi về Logic, Cấu trúc DB, API, hoặc Quy trình nghiệp vụ. Các fix lỗi chính tả, format code nhỏ nhặt không cần ghi tại đây (hãy dùng Git Commit).
-5.  **FORMAT THỐNG NHẤT:** Sử dụng đúng Template mẫu ở cuối file khi thêm log mới.
+1. **NGUYÊN TẮC "BẤT BIẾN" (IMMUTABILITY):** Tuyệt đối **KHÔNG ĐƯỢC XÓA hoặc SỬA** các log cũ phía trên. Mọi thay đổi đều phải viết tiếp xuống dưới cùng (Append-only).
+2. **XỬ LÝ SAI SÓT:** Nếu một log trước đó bị sai hoặc cần hủy bỏ, hãy tạo một log mới bên dưới với nội dung *"Revert (Đảo ngược) thay đổi [Mã ID]..."* thay vì xóa dòng cũ.
+3. **LÝ DO LÀ QUAN TRỌNG NHẤT:** Luôn ghi rõ mục *"Lý do/Rationale"*. Chúng ta cần biết *tại sao* thay đổi logic này để tránh lặp lại sai lầm trong tương lai.
+4. **TRỌNG TÂM NGHIỆP VỤ:** Chỉ log những thay đổi về Logic, Cấu trúc DB, API, hoặc Quy trình nghiệp vụ. Các fix lỗi chính tả, format code nhỏ nhặt không cần ghi tại đây (hãy dùng Git Commit).
+5. **FORMAT THỐNG NHẤT:** Sử dụng đúng Template mẫu ở cuối file khi thêm log mới.
 
 ---
 
 ## 📋 LỊCH SỬ THAY ĐỔI (LOGS)
 
 ### [CR-001] Khởi tạo dự án & Ban hành SRS
+
 - **Thời gian:** 07/01/2026 08:30 AM
 - **Người yêu cầu:** Trần Văn Chiến
 - **Phân hệ:** Toàn hệ thống
@@ -31,6 +33,7 @@
 ---
 
 ### [CR-002] Cập nhật Logic Xử lý Trùng lặp Dữ liệu (Staging)
+
 - **Thời gian:** 07/01/2026 10:15 AM
 - **Người yêu cầu:** Trần Văn Chiến
 - **Phân hệ:** Database / Data Entry
@@ -45,6 +48,7 @@
 ---
 
 ### [CR-003] Mở rộng Schema Bảng Thuốc
+
 - **Thời gian:** 07/01/2026 11:00 AM
 - **Người yêu cầu:** Team Thẩm định
 - **Phân hệ:** Database
@@ -57,6 +61,7 @@
 ---
 
 ### [CR-004] Chia nhỏ file code source
+
 - **Thời gian:** 07/01/2026 13:10
 - **Người yêu cầu:** Trần Văn Chiến
 - **Phân hệ:** Design pattern
@@ -67,6 +72,7 @@
 ---
 
 ### [CR-005] Import DataCore & Schema Migration
+
 - **Thời gian:** 09/01/2026 14:30
 - **Người yêu cầu:** AI Architect
 - **Phân hệ:** Database / Data Pipeline
@@ -79,6 +85,7 @@
 ---
 
 ### [CR-006] Nâng cấp Thuật toán Tìm kiếm (Hybrid Search v2.0)
+
 - **Thời gian:** 09/01/2026 18:30
 - **Người yêu cầu:** AI Scientist
 - **Phân hệ:** Backend / Search Engine
@@ -91,6 +98,7 @@
 ---
 
 ### [CR-007] Tích hợp Browser MCP Agent vào Server (Task 027)
+
 - **Thời gian:** 12/01/2026 13:00
 - **Người yêu cầu:** Admin
 - **Phân hệ:** Backend / Agent Service / Docker
@@ -104,6 +112,7 @@
 ---
 
 ### [CR-008] Triển khai Token Tracking Service (Task 028)
+
 - **Thời gian:** 12/01/2026 13:30
 - **Người yêu cầu:** Admin
 - **Phân hệ:** Monitoring / Cost Management
@@ -117,6 +126,7 @@
 ---
 
 ### [CR-009] Triển khai API Logging Middleware (Task 029)
+
 - **Thời gian:** 12/01/2026 13:30
 - **Người yêu cầu:** Admin
 - **Phân hệ:** Backend / Logging & Auditing
@@ -132,9 +142,10 @@
 ## 📋 TEMPLATE CHO LOG MỚI (COPY & PASTE)
 
 ### [CR-XXX] Tiêu đề thay đổi ngắn gọn
+
 - **Thời gian:** DD/MM/YYYY HH:MM
 - **Người yêu cầu:** Tên người yêu cầu
-- **Phân hệ:** API / DB / UI / Crawler...
+- **Phân hệ:** API / DB / UI / Crawle
 - **Nội dung thay đổi:**
   - Mô tả ngắn gọn hiện trạng cũ.
   - Mô tả chi tiết thay đổi mới.

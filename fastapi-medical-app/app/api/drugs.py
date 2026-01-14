@@ -126,48 +126,42 @@ async def identify_drugs(payload: DrugRequest):
             if data.get('so_dang_ky') and data.get('is_verified') == 1:
                 use_db = True
         
-        if use_db:
-             info = db_result['data']
-             drug_data = {
-                "input_name": drug_raw,
-                "official_name": info.get('ten_thuoc'),
-                "sdk": info.get('so_dang_ky'),
-                "active_ingredient": info.get('hoat_chat'),
-                "usage": info.get('chi_dinh', 'N/A'),
-                "classification": info.get('classification'),
-                "note": info.get('note'),
-                "source": db_result.get('source'),
-                "confidence": db_result.get('confidence'),
-                "source_urls": [] # Database source
-            }
-        else:
-            # 2. Web Search Fallback
-            # Only search if DB didn't yield a high confidence verified result
-            web_info = await scrape_drug_web(keyword)
-            
-            if web_info:
-                info = web_info
-                drug_data = {
+            if use_db:
+                 info = db_result['data']
+                 drug_data = {
                     "input_name": drug_raw,
                     "official_name": info.get('ten_thuoc'),
                     "sdk": info.get('so_dang_ky'),
                     "active_ingredient": info.get('hoat_chat'),
                     "usage": info.get('chi_dinh', 'N/A'),
-                    "contraindications": info.get('chong_chi_dinh'),
-                    "dosage": info.get('lieu_dung'),
-                    "source": info.get('source', "Web"),
-                    "confidence": info.get('confidence', 0.8),
-                    "source_urls": info.get('source_urls', [])
+                    "classification": info.get('classification'),
+                    "note": info.get('note'),
+                    "source": db_result.get('source'),
+                    "confidence": db_result.get('confidence'),
+                    "source_urls": [] # Database source
                 }
-            elif db_result:
-                 # Web failed, but we had a partial DB match (unverified or lower conf)?
-                 # The Smart Search only returns Verified.
-                 # If we are here, it means Smart Search returned None.
-                 # Actually Smart Search logic strictly checks Verified=1.
-                 # So if smart search returns, it IS verified.
-                 # Meaning if use_db=True, we used it.
-                 # If use_db=False (shouldn't happen if db_result is set per logic above), we go here.
-                 pass
+            else:
+                # 2. Web Search Fallback
+                # Only search if DB didn't yield a high confidence verified result
+                web_info = await scrape_drug_web(keyword)
+                
+                if web_info:
+                    info = web_info
+                    drug_data = {
+                        "input_name": drug_raw,
+                        "official_name": info.get('ten_thuoc'),
+                        "sdk": info.get('so_dang_ky'),
+                        "active_ingredient": info.get('hoat_chat'),
+                        "usage": info.get('chi_dinh', 'N/A'),
+                        "contraindications": info.get('chong_chi_dinh'),
+                        "dosage": info.get('lieu_dung'),
+                        "source": info.get('source', "Web"),
+                        "confidence": info.get('confidence', 0.8),
+                        "source_urls": info.get('source_urls', [])
+                    }
+                elif db_result:
+                     # Web failed, but we had a partial DB match?
+                     pass
         
         if drug_data:
             # Logic check trùng trong batch hiện tại
@@ -193,12 +187,15 @@ from app.service.agent_search_service import run_agent_search
 @router.post("/agent-search")
 async def search_drug_agent(payload: DrugRequest):
     """
-    Kích hoạt AI Agent (Browser MCP) để tìm kiếm thuốc exhaustive (bypass Google blocking).
-    Input: Danh sách thuốc (nhưng chỉ xử lý thuốc đầu tiên để tiết kiệm resource).
+    Kích hoạt AI Agent (Browser) để tìm kiếm thuốc.
+    Input: Danh sách thuốc - mỗi thuốc được search tối đa 5 rounds.
     """
     if not payload.drugs:
         raise HTTPException(status_code=400, detail="No drug name provided")
     
-    drug_name = payload.drugs[0]
-    result = await run_agent_search(drug_name)
-    return result
+    results = []
+    for drug_name in payload.drugs:
+        result = await run_agent_search(drug_name)
+        results.append(result)
+    
+    return {"results": results}

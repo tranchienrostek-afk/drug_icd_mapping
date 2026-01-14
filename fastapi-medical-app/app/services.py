@@ -16,7 +16,7 @@ from app.service.crawler import search_icd_online
 load_dotenv()
 
 # --- UTILS ---
-DB_PATH = "app/database/medical.db"
+DB_PATH = os.getenv("DB_PATH", "app/database/medical.db")
 
 def dict_factory(cursor, row):
     d = {}
@@ -46,7 +46,30 @@ class DrugDbEngine:
         conn = self.get_connection()
         cursor = conn.cursor()
         try:
-            # 1. Main Drugs Table Updates (Migrations)
+            # 0. Ensure Base Tables Exist
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS drugs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    ten_thuoc TEXT,
+                    hoat_chat TEXT,
+                    cong_ty_san_xuat TEXT,
+                    so_dang_ky TEXT,
+                    chi_dinh TEXT,
+                    tu_dong_nghia TEXT,
+                    is_verified INTEGER DEFAULT 0,
+                    search_text TEXT,
+                    created_at TIMESTAMP,
+                    created_by TEXT,
+                    updated_at TIMESTAMP,
+                    updated_by TEXT,
+                    classification TEXT,
+                    note TEXT
+                )
+            """)
+            # Ensure FTS Table
+            cursor.execute("CREATE VIRTUAL TABLE IF NOT EXISTS drugs_fts USING fts5(ten_thuoc, hoat_chat, cong_ty_san_xuat, search_text)")
+
+            # 1. Main Drugs Table Updates (Migrations - for older DBs)
             cursor.execute("PRAGMA table_info(drugs)")
             columns = [info['name'] for info in cursor.fetchall()]
             
@@ -219,6 +242,32 @@ class DrugDbEngine:
                 cursor.execute("ALTER TABLE drug_disease_links ADD COLUMN sdk TEXT")
             if 'icd_code' not in link_columns:
                 cursor.execute("ALTER TABLE drug_disease_links ADD COLUMN icd_code TEXT")
+
+            # 6. Raw Logs (New)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS raw_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    batch_id TEXT,
+                    raw_content TEXT,
+                    source_ip TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+
+            # 7. Knowledge Base (New)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS knowledge_base (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    drug_name_norm TEXT,
+                    drug_ref_id INTEGER,
+                    disease_name_norm TEXT,
+                    disease_icd TEXT,
+                    frequency INTEGER DEFAULT 1,
+                    confidence_score REAL DEFAULT 0.0,
+                    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_kb_lookup ON knowledge_base(drug_name_norm, disease_name_norm)")
                 
             conn.commit()
         except sqlite3.Error as e:
@@ -1023,6 +1072,68 @@ class DrugDbEngine:
         except sqlite3.Error as e:
             print(f"KB Check Error: {e}")
             return {}
+        finally:
+            conn.close()
+
+    def log_raw_data(self, batch_id, content, source_ip):
+        """Log raw input data for audit"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("INSERT INTO raw_logs (batch_id, raw_content, source_ip) VALUES (?, ?, ?)", 
+                           (batch_id, content, source_ip))
+            conn.commit()
+            return cursor.lastrowid
+        finally:
+            conn.close()
+
+    def upsert_knowledge_base(self, drug_name, disease_name, icd_code=None, drug_ref_id=None):
+        """
+        Vote & Promote Logic:
+        - Normalize names.
+        - Check if exists.
+        - If yes: freq += 1. update confidence.
+        - If no: insert freq=1.
+        """
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        try:
+            drug_norm = normalize_text(drug_name)
+            disease_norm = normalize_text(disease_name)
+            icd = icd_code.strip() if icd_code else ""
+            
+            # Find existing record
+            sql_find = "SELECT id, frequency FROM knowledge_base WHERE drug_name_norm = ? AND disease_name_norm = ?"
+            params = [drug_norm, disease_norm]
+            if icd:
+                sql_find += " AND disease_icd = ?"
+                params.append(icd)
+            
+            cursor.execute(sql_find, params)
+            row = cursor.fetchone()
+            
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
+            if row:
+                new_freq = row['frequency'] + 1
+                # Simple Confidence Logic: log10(freq) / 2.5 (max out at freq ~300 -> 1.0)
+                import math
+                conf = min(0.99, math.log10(new_freq) / 2.5) if new_freq > 1 else 0.1
+                
+                cursor.execute("""
+                    UPDATE knowledge_base 
+                    SET frequency = ?, confidence_score = ?, last_updated = ?
+                    WHERE id = ?
+                """, (new_freq, conf, now, row['id']))
+            else:
+                cursor.execute("""
+                    INSERT INTO knowledge_base (drug_name_norm, disease_name_norm, disease_icd, drug_ref_id, frequency, confidence_score, last_updated)
+                    VALUES (?, ?, ?, ?, 1, 0.1, ?)
+                """, (drug_norm, disease_norm, icd, drug_ref_id, now))
+                
+            conn.commit()
+        except Exception as e:
+            print(f"KB Upsert Error: {e}")
         finally:
             conn.close()
 

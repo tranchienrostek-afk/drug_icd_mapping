@@ -1,17 +1,42 @@
-# Domain: System Admin & History
+# Domain: System Admin & Audit Logs
 
-Các bảng phục vụ quản trị hệ thống, truy vết dữ liệu (Audit Trail) và quản lý thay đổi.
+Quản lý dữ liệu hệ thống, nhật ký truy vết (Audit Trail) và dữ liệu thô đầu vào (Raw Logs).
 
-## 1. Truy vết Thuốc (`drug_history`)
-Lưu trữ phiên bản cũ của thuốc khi có sự thay đổi thông tin trong bảng `drugs`.
-- `original_drug_id`: Liên kết về ID thuốc gốc.
-- `archived_at`: Thời điểm lưu trữ.
+## 1. Nhật ký Thay đổi Thuốc (`drug_history`)
+Lưu trữ bản sao (Snapshot) của thuốc trước khi bị chỉnh sửa hoặc ghi đè.
 
-## 2. Truy vết Staging (`drug_staging_history`)
-Lưu trữ lịch sử xử lý các bản ghi staging (Approved, Rejected, Cleared).
-- `original_staging_id`: ID gốc từ bảng `drug_staging`.
-- `action`: Hành động đã thực hiện (xem `enum_definitions.md`).
+| Cột | Kiểu dữ liệu | Mô tả |
+| :--- | :--- | :--- |
+| `id` | INTEGER | Khóa chính |
+| `original_drug_id` | INTEGER | ID của thuốc gốc trong bảng `drugs` |
+| `ten_thuoc` | TEXT | Tên thuốc cũ |
+| `hoat_chat` | TEXT | Hoạt chất cũ |
+| `cong_ty_san_xuat` | TEXT | Công ty cũ |
+| `so_dang_ky` | TEXT | SDK cũ |
+| `chi_dinh` | TEXT | Chỉ định cũ |
+| `archived_at` | TIMESTAMP | Thời điểm lưu trữ |
+| `archived_by` | TEXT | Người thực hiện thay đổi |
 
-## 3. Quản lý chung
-- `sqlite_sequence`: Bảng hệ thống của SQLite để quản lý các trường AUTOINCREMENT.
-- `created_by`, `updated_by`: Truy vết người thực hiện thay đổi trên các bản ghi.
+## 2. Nhật ký Staging (`drug_staging_history`)
+Lưu trữ lịch sử các bản ghi Staging đã được xử lý (Approved/Rejected/Cleared).
+
+| Cột | Kiểu dữ liệu | Mô tả |
+| :--- | :--- | :--- |
+| `id` | INTEGER | Khóa chính |
+| `original_staging_id`| INTEGER | ID gốc trong bảng `drug_staging` |
+| `ten_thuoc` | TEXT | Tên thuốc |
+| `so_dang_ky` | TEXT | SDK |
+| `action` | TEXT | Hành động: `approved`, `rejected`, `cleared` |
+| `archived_at` | TIMESTAMP | Thời điểm xử lý |
+| `archived_by` | TEXT | Người xử lý |
+
+## 3. Nhật ký Dữ liệu Thô (`raw_logs`)
+Lưu trữ dữ liệu gốc từ quá trình ETL/Data Ingestion để đối chiếu khi cần thiết.
+
+| Cột | Kiểu dữ liệu | Mô tả |
+| :--- | :--- | :--- |
+| `id` | INTEGER | Khóa chính |
+| `batch_id` | TEXT | Mã lô import (UUID) |
+| `raw_content` | TEXT | Nội dung thô (JSON/CSV row) |
+| `source_ip` | TEXT | IP nguồn đẩy dữ liệu |
+| `created_at` | TIMESTAMP | Thời điểm nhận |

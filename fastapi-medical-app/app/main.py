@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from app.api import drugs, diseases, analysis, admin
+from app.api import drugs, diseases, analysis, admin, data_management, consult
 from app.middlewares.logging_middleware import LogMiddleware
 import os
 
@@ -21,6 +21,8 @@ app.include_router(drugs.router, prefix="/api/v1/drugs", tags=["Drugs"])
 app.include_router(diseases.router, prefix="/api/v1/diseases", tags=["Diseases"])
 app.include_router(analysis.router, prefix="/api/v1/analysis", tags=["Analysis"])
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["Admin"])
+app.include_router(data_management.router, prefix="/api/v1", tags=["Data Management"])
+app.include_router(consult.router, prefix="/api/v1", tags=["Consultation"])
 
 @app.get("/")
 def read_root():

@@ -3,7 +3,7 @@
 Tài liệu này liệt kê các giá trị hợp lệ cho các trường trạng thái và phân loại trong hệ thống.
 
 ## 1. Trạng thái bản ghi (Record Status)
-Dùng chung cho nhiều bảng (ví dụ: `drugs`, `diseases`, `drug_disease_links`).
+Dùng chung cho nhiều bảng (ví dụ: `drugs`, `diseases`).
 - `active`: Đang hoạt động, được phép tìm kiếm và hiển thị.
 - `inactive`: Bị vô hiệu hóa, không sử dụng.
 
@@ -25,3 +25,13 @@ Dùng chung cho nhiều bảng (ví dụ: `drugs`, `diseases`, `drug_disease_lin
 Dùng trong `drugs` và `drug_disease_links`.
 - `0`: Chưa xác minh (Dữ liệu từ máy hoặc crawler).
 - `1`: Đã xác minh bởi dược sĩ/chuyên gia.
+
+## 6. Trạng thái liên kết (`drug_disease_links.status`)
+- `active`: Liên kết có hiệu lực.
+- `pending`: Liên kết chờ duyệt (thường đi kèm với thuốc chờ duyệt).
+- `archived`: Liên kết cũ hoặc bị từ chối/xóa.
+
+## 7. Loại bao phủ (`drug_disease_links.coverage_type`)
+- `Thuốc điều trị`: Thuốc chính điều trị nguyên nhân.
+- `Thuốc hỗ trợ`: Thuốc điều trị triệu chứng hoặc bổ trợ.
+- `Thay thế`: Thuốc thay thế khi dị ứng hoặc không đáp ứng.
