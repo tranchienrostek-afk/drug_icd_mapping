@@ -78,23 +78,33 @@ async def consult_integrated(payload: ConsultRequest):
             for diag in all_diagnoses:
                 diag_norm = normalize_text(diag.name)
                 
-                # Check DB
+                # Check DB (Aggregation Query)
+                # Count occurrences and get the most common treatment_type
                 cursor.execute("""
-                    SELECT frequency, confidence_score 
+                    SELECT count(*) as frequency, treatment_type
                     FROM knowledge_base 
                     WHERE drug_name_norm = ? AND disease_name_norm = ?
+                    GROUP BY treatment_type
+                    ORDER BY frequency DESC
+                    LIMIT 1
                 """, (drug_norm, diag_norm))
+                
                 row = cursor.fetchone()
                 
                 if row:
-                    conf = row['confidence_score']
+                    freq = row['frequency']
+                    # Calculate Dynamic Confidence
+                    # Simple Log Logic: log10(freq) / 2.0 -> reaches ~1.0 at 100
+                    import math
+                    conf = min(0.99, math.log10(freq) / 2.0) if freq > 1 else 0.1
+                    
                     # THRESHOLD
                     if conf >= 0.8: # High confidence
                         is_resolved = True
                         best_match = {
                             "validity": "valid", 
-                            "role": "main drug" if diag.type == 'MAIN' else "supportive",
-                            "explanation": f"Internal KB: Used {row['frequency']} times for '{diag.name}'. Confidence: {conf:.0%}",
+                            "role": row['treatment_type'] if row['treatment_type'] else ("main drug" if diag.type == 'MAIN' else "supportive"),
+                            "explanation": f"Internal KB: Found {freq} records for '{diag.name}'. Confidence: {conf:.0%}",
                             "source": "INTERNAL_KB"
                         }
                         break

@@ -259,15 +259,18 @@ class DrugDbEngine:
                 CREATE TABLE IF NOT EXISTS knowledge_base (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     drug_name_norm TEXT,
-                    drug_ref_id INTEGER,
                     disease_name_norm TEXT,
+                    raw_drug_name TEXT,
+                    raw_disease_name TEXT,
+                    treatment_type TEXT, -- 'Thuốc chính', 'Hỗ trợ', etc.
                     disease_icd TEXT,
-                    frequency INTEGER DEFAULT 1,
-                    confidence_score REAL DEFAULT 0.0,
-                    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    source_id TEXT, -- batch_id
+                    confidence_score REAL DEFAULT 1.0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_kb_lookup ON knowledge_base(drug_name_norm, disease_name_norm)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_kb_type ON knowledge_base(treatment_type)")
                 
             conn.commit()
         except sqlite3.Error as e:
@@ -1087,13 +1090,10 @@ class DrugDbEngine:
         finally:
             conn.close()
 
-    def upsert_knowledge_base(self, drug_name, disease_name, icd_code=None, drug_ref_id=None):
+    def insert_knowledge_interaction(self, drug_name, disease_name, treatment_type, icd_code=None, source_id=None):
         """
-        Vote & Promote Logic:
-        - Normalize names.
-        - Check if exists.
-        - If yes: freq += 1. update confidence.
-        - If no: insert freq=1.
+        Ghi nhận tương tác Raw vào Knowledge Base (Log-based).
+        Lưu từng record để giữ nguyên phân loại (treatment_type).
         """
         conn = self.get_connection()
         cursor = conn.cursor()
@@ -1102,38 +1102,25 @@ class DrugDbEngine:
             disease_norm = normalize_text(disease_name)
             icd = icd_code.strip() if icd_code else ""
             
-            # Find existing record
-            sql_find = "SELECT id, frequency FROM knowledge_base WHERE drug_name_norm = ? AND disease_name_norm = ?"
-            params = [drug_norm, disease_norm]
-            if icd:
-                sql_find += " AND disease_icd = ?"
-                params.append(icd)
-            
-            cursor.execute(sql_find, params)
-            row = cursor.fetchone()
-            
             now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             
-            if row:
-                new_freq = row['frequency'] + 1
-                # Simple Confidence Logic: log10(freq) / 2.5 (max out at freq ~300 -> 1.0)
-                import math
-                conf = min(0.99, math.log10(new_freq) / 2.5) if new_freq > 1 else 0.1
-                
-                cursor.execute("""
-                    UPDATE knowledge_base 
-                    SET frequency = ?, confidence_score = ?, last_updated = ?
-                    WHERE id = ?
-                """, (new_freq, conf, now, row['id']))
-            else:
-                cursor.execute("""
-                    INSERT INTO knowledge_base (drug_name_norm, disease_name_norm, disease_icd, drug_ref_id, frequency, confidence_score, last_updated)
-                    VALUES (?, ?, ?, ?, 1, 0.1, ?)
-                """, (drug_norm, disease_norm, icd, drug_ref_id, now))
-                
+            sql = """
+                INSERT INTO knowledge_base (
+                    drug_name_norm, disease_name_norm, 
+                    raw_drug_name, raw_disease_name, 
+                    treatment_type, disease_icd, 
+                    source_id, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """
+            cursor.execute(sql, (
+                drug_norm, disease_norm, 
+                drug_name, disease_name, 
+                treatment_type, icd, 
+                source_id, now
+            ))
             conn.commit()
         except Exception as e:
-            print(f"KB Upsert Error: {e}")
+            print(f"KB Insert Error: {e}")
         finally:
             conn.close()
 

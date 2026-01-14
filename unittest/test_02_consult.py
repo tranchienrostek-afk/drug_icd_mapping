@@ -16,8 +16,9 @@ async def test_consult_kb_hit(client, mock_db_engine):
     # But the code uses `row['confidence_score']`. So returning a dict is fine.
     
     # Return high confidence for the loop
-    # Query: SELECT frequency, confidence_score ...
-    mock_cursor.fetchone.return_value = {"frequency": 100, "confidence_score": 0.95}
+    # Return high confidence for the loop
+    # Query: SELECT count(*) as frequency, treatment_type ...
+    mock_cursor.fetchone.return_value = {"frequency": 100, "treatment_type": "Main Drug"}
 
     payload = {
         "request_id": "TEST-01",

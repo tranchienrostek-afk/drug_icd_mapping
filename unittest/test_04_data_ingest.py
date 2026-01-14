@@ -39,17 +39,45 @@ async def test_api_ingest_csv(client, mock_db_engine, mocker):
 
 @pytest.mark.asyncio
 async def test_etl_service_logic(mocker):
-    """Test process_raw_log Unit Logic"""
+    """Test process_raw_log with REAL CSV format"""
     from app.service.etl_service import process_raw_log
     
     # Mock DB in etl_service
     mock_db = MagicMock()
     mocker.patch("app.service.etl_service.db", mock_db)
     
-    content = "drug_name,disease_name,icd_code\nPara,Headache,R51\nOther,Flu,J00"
-    batch_id = "test-batch"
+    # Real CSV snippet with various cases
+    content = '''"id","chuan_doan_ra_vien","?column?","ten_thuoc","phan_loai","tdv_feedback"
+"1","Viêm mũi","J00","Panadol","{drug,valid,""main drug""}","{valid}"
+"2","Sốt xuất huyết","A90","Oremute","{drug,valid,""secondary drug""}","{"""secondary drug"""}"
+"3","Mụn trứng cá","L70","Cream X","{nodrug,cosmeceuticals}","{}"
+"4","Gãy xương","S02","Nẹp y tế","{nodrug,""medical supplies""}","{}"
+"5","Sai thuốc","Z00","Thuốc sai","{drug,invalid}","{}"
+'''
+    batch_id = "test-real-csv"
     
     await process_raw_log(batch_id, content)
     
-    assert mock_db.upsert_knowledge_base.call_count == 2
-    mock_db.upsert_knowledge_base.assert_any_call("Para", "Headache", "R51")
+    assert mock_db.insert_knowledge_interaction.call_count == 2
+    # Check parsing
+    print(f"Mock Calls: {mock_db.insert_knowledge_interaction.call_args_list}")
+    
+    # Extract all calls args
+    calls = [c.args for c in mock_db.insert_knowledge_interaction.call_args_list]
+    
+    # Check for presence of key CLASS VALUES (defined in classification.py)
+    # The ETL now returns 'valid', 'secondary drug', 'medical supplies', etc.
+    found_main = any("valid" in args for args in calls) 
+    found_secondary = any("secondary drug" in args for args in calls)
+    found_cosmetic = any("cosmeceuticals" in args for args in calls)
+    found_supplies = any("medical supplies" in args for args in calls)
+    found_invalid = any("invalid" in args for args in calls)
+    
+    assert found_main, "Missing 'valid' (Main Drug)"
+    assert found_secondary, "Missing 'secondary drug'"
+    assert found_cosmetic, "Missing 'cosmeceuticals'"
+    assert found_supplies, "Missing 'medical supplies'"
+    assert found_invalid, "Missing 'invalid' (Non-treatment)"
+    
+    # Verify basics
+    assert mock_db.insert_knowledge_interaction.call_count == 5

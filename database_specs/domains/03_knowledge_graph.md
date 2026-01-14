@@ -20,17 +20,42 @@ Lưu trữ các liên kết cứng (Explicit Links) giữa Thuốc và Bệnh.
 | `created_at` | TIMESTAMP | Thời điểm tạo |
 
 ## 2. Bảng `knowledge_base`
-Bảng tri thức tổng hợp (Implicit Knowledge) dùng cho thuật toán **Vote & Promote**. Lưu trữ tần suất xuất hiện của các cặp Thuốc-Bệnh từ dữ liệu lịch sử/ETL.
+Role: **Raw Interaction Store & Crowd Intelligence Source**
+
+Thay vì lưu trữ dữ liệu đã gộp (aggregated), bảng này lưu trữ **mọi tương tác thô** (Raw Interactions) hợp lệ từ các nguồn dữ liệu (CSV Logs từ bệnh viện).
+Điều này cho phép hệ thống thực hiện chiến lược **"Vote & Promote"**:
+- Mỗi bản ghi là một "phiếu bầu" (Vote) của một bác sĩ/thẩm định viên cho cách phân loại thuốc-bệnh đó.
+- Khi truy vấn (Consult), hệ thống sẽ đếm phiếu (Count) và trả về kết quả được bầu chọn nhiều nhất.
+
+### Schema Chi Tiết
 
 | Cột | Kiểu dữ liệu | Mô tả |
 | :--- | :--- | :--- |
 | `id` | INTEGER | Khóa chính tự tăng |
-| `drug_name_norm` | TEXT | Tên thuốc đã chuẩn hóa (key lookup) |
-| `disease_name_norm`| TEXT | Tên bệnh đã chuẩn hóa (key lookup) |
-| `drug_ref_id` | INTEGER | Reference ID tới bảng drugs (nếu có) |
-| `disease_icd` | TEXT | Mã ICD tham chiếu |
-| `frequency` | INTEGER | Số lần cặp này xuất hiện trong dữ liệu huấn luyện |
-| `confidence_score` | REAL | Điểm tin cậy tính toán (ví dụ: Logarithmic scale của frequency) |
-| `last_updated` | TIMESTAMP | Thời điểm cập nhật cuối cùng |
+| `drug_name_norm` | TEXT | Tên thuốc đã chuẩn hóa (Dùng để tìm kiếm/nhóm). Ví dụ: "panadol" |
+| `disease_name_norm`| TEXT | Tên bệnh đã chuẩn hóa (Dùng để tìm kiếm/nhóm). Ví dụ: "viêm mũi họng" |
+| `raw_drug_name` | TEXT | Tên thuốc nguyên bản từ nguồn (vd: "Panadol Extra 500mg"). Giúp audit. |
+| `raw_disease_name` | TEXT | Tên bệnh nguyên bản từ nguồn (vd: "Viêm họng cấp J02"). Giúp audit. |
+| `treatment_type` | TEXT | Phân loại điều trị (The "Vote"). **Standard Values** (match `group_definitions.md`): `valid` (Thuốc chính), `secondary drug`, `medical supplies`, `supplement`, `cosmeceuticals`, `medical equipment`, `invalid`. |
+| `disease_icd` | TEXT | Mã ICD tham chiếu từ nguồn (nếu có). |
+| `source_id` | TEXT | Định danh nguồn dữ liệu (vd: `batch_id` từ lần import CSV). |
+| `confidence_score` | REAL | Trọng số của nguồn dữ liệu này (Mặc định: 1.0). Có thể dùng để ưu tiên nguồn uy tín hơn. |
+| `created_at` | TIMESTAMP | Thời điểm bản ghi được tạo. |
 
-**Index**: `idx_kb_lookup(drug_name_norm, disease_name_norm)` - Giúp truy vấn O(1).
+### Các Index Quan Trọng
+1.  `idx_kb_lookup(drug_name_norm, disease_name_norm)`: Index cốt lõi phục vụ truy vấn Consult.
+2.  `idx_kb_type(treatment_type)`: Hỗ trợ thống kê, báo cáo theo loại điều trị.
+
+## 3. Logic "Vote & Promote"
+Quy trình xác định phân loại cho cặp `(Thuốc A, Bệnh B)`:
+
+1.  **Query**: `SELECT treatment_type, COUNT(*) as vote_count FROM knowledge_base WHERE drug_name_norm = ? AND disease_name_norm = ? GROUP BY treatment_type`
+2.  **Decision**: Chọn `treatment_type` có `vote_count` cao nhất.
+3.  **Confidence**: `Score = vote_count / total_votes`.
+
+Ví dụ:
+- 90 votes: `valid`
+- 5 votes: `secondary drug`
+- 2 votes: `supplement`
+=> Kết luận: Link này là **valid** (Thuốc chính) (Confidence ~92%).
+

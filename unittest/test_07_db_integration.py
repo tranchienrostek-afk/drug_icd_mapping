@@ -90,15 +90,15 @@ async def test_etl_to_consult_integration(mocker):
     # 4. Verify DB Content
     conn = persistent_db.get_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM knowledge_base WHERE drug_name_norm = 'panadol integration'")
+    # Schema changed: Raw logs, so we count rows
+    cursor.execute("SELECT count(*) as frequency FROM knowledge_base WHERE drug_name_norm = 'panadol integration'")
     row = cursor.fetchone()
     # Debug: if row is None, check table names
     if row is None:
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
         print("Tables:", cursor.fetchall())
         
-    assert row is not None, "ETL failed to insert data into knowledge_base"
-    assert row['frequency'] >= 1
+    assert row['frequency'] >= 1, "ETL failed to insert data into knowledge_base"
     # Do not verify internal state of connection close
     
     # 5. Consult - Low Confidence
@@ -132,22 +132,33 @@ async def test_etl_to_consult_integration(mocker):
     # Check results
     res_dict = {r.id: r for r in response.results}
     if 'd1' in res_dict:
-        # Should be AI source because confidence is low (initial insert)
-        # Assuming our business logic holds.
+        # Should be AI source because confidence is low (freq=1 -> log10(1)=0 -> conf=0.1)
         assert res_dict['d1'].source != "INTERNAL_KB", f"Unexpected source: {res_dict['d1'].source}"
 
     # 6. Boost Confidence
-    # Direct DB update (using persistent_db)
-    cursor.execute("UPDATE knowledge_base SET frequency=100, confidence_score=0.95 WHERE drug_name_norm='panadol integration'")
-    persistent_db.get_connection().commit() # Commit via proxy
+    # Direct DB update (Insert 100 records to boost freq)
+    conn = persistent_db.get_connection()
+    cursor = conn.cursor()
+    
+    # Insert 100 dummy records efficiently
+    # We can just insert one record with count... NO, schema is raw.
+    # We must insert 100 rows.
+    # Use executemany
+    dummy_data = [('panadol integration', 'headache test', 'panadol integration', 'headache test', 'Thuốc chính', 'R51')] * 100
+    cursor.executemany("""
+        INSERT INTO knowledge_base (drug_name_norm, disease_name_norm, raw_drug_name, raw_disease_name, treatment_type, disease_icd)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, dummy_data)
+    
+    conn.commit()
+    conn.close()
     
     # 7. Consult - High Confidence
     response_high = await consult_integrated(payload)
     res_dict_high = {r.id: r for r in response_high.results}
     
     assert 'd1' in res_dict_high
-    # Now that we boosted confidence, it SHOULD use Internal KB
-    # The SQL inside consult_integrated: SELECT ... FROM knowledge_base
-    # It must see the update.
+    # Now that we boosted confidence (freq ~101 -> log10(101) ~2 -> conf ~1.0), it SHOULD use Internal KB
+    # Logic in consult: if conf >= 0.8 -> INTERNAL_KB
     assert res_dict_high['d1'].source == "INTERNAL_KB"
 

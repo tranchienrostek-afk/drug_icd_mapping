@@ -21,7 +21,7 @@ app.include_router(drugs.router, prefix="/api/v1/drugs", tags=["Drugs"])
 app.include_router(diseases.router, prefix="/api/v1/diseases", tags=["Diseases"])
 app.include_router(analysis.router, prefix="/api/v1/analysis", tags=["Analysis"])
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["Admin"])
-app.include_router(data_management.router, prefix="/api/v1", tags=["Data Management"])
+app.include_router(data_management.router, prefix="/api/v1/data", tags=["Data Management"])
 app.include_router(consult.router, prefix="/api/v1", tags=["Consultation"])
 
 @app.get("/")
