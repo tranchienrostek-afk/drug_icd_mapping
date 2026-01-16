@@ -8,7 +8,7 @@ import json
 # Add project root to path
 sys.path.insert(0, r'C:\Users\Admin\Desktop\drug_icd_mapping\fastapi-medical-app')
 
-from app.data_refinery import DataRefinery
+from app.service.etl_service import EtlService
 
 CSV_PATH = r"C:\Users\Admin\Desktop\drug_icd_mapping\ketqua_thuoc_part_20260107_154800.csv"
 DB_PATH = r"C:\Users\Admin\Desktop\drug_icd_mapping\fastapi-medical-app\app\database\medical.db"
@@ -19,17 +19,17 @@ def run_import():
     print("="*60)
     
     # 1. Pipeline: Load -> Clean -> Deduplicate
-    refinery = DataRefinery()
+    etl_service = EtlService()
     
     print("\n[Step 1] Loading and Cleaning Data...")
     if not os.path.exists(CSV_PATH):
         print(f"❌ CSV File not found: {CSV_PATH}")
         return
 
-    df = refinery.load_csv(CSV_PATH)
-    df_clean = refinery.clean_and_deduplicate(df)
+    df = etl_service.load_csv(CSV_PATH)
+    df_clean = etl_service.clean_and_deduplicate(df)
     
-    records = refinery.process_for_import(df_clean)
+    records = etl_service.process_for_import(df_clean)
     print(f"✅ Ready to import {len(records)} unique records.")
     
     # 2. Database Import (Smart Upsert)

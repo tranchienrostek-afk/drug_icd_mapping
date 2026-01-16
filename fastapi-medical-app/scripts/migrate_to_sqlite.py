@@ -1,7 +1,7 @@
 import pandas as pd
 import sqlite3
 import os
-from app.utils import normalize_text
+from app.core.utils import normalize_text
 
 # Paths
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

@@ -1,8 +1,21 @@
 import re
+import unicodedata
+import os
+import openpyxl
 
 UNIT = r'(mg|g|mcg|iu|ml|l)' # Expanded slightly for safety
 DOSE = rf'\d+(?:\.\d+)?\s*{UNIT}'
 SEP = r'\+|/|,|\band\b|\bva\b'
+
+# Path configuration
+APP_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) # Adjusted path for core/utils.py (up one more level?)
+# APP_DIR is now app/core/.. -> app/
+# In original utils.py (app/utils.py), APP_DIR = app/
+# In app/core/utils.py, abspath is app/core/utils.py. dirname is app/core. dirname(dirname) is app/
+# So same logic works if we add one more dirname call or adjust relative path?
+# Let's check original: APP_DIR = os.path.dirname(os.path.abspath(__file__)) -> app/
+# New: APP_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) -> app/
+# STATIC_DIR = os.path.join(APP_DIR, "static") -> app/static. Correct.
 
 def normalize_name(name: str) -> str:
     name = re.sub(r'\([^)]*\)', '', name)  # bỏ ngoặc
@@ -64,12 +77,13 @@ def normalize_text(text: str) -> str:
 
 # --- NEW NORMALIZATION LOGIC ---
 
-import unicodedata
-import os
-import openpyxl
-
-# Path configuration
-APP_DIR = os.path.dirname(os.path.abspath(__file__))
+# Path configuration re-evaluation
+# Original: APP_DIR = os.path.dirname(os.path.abspath(__file__)) -> app/
+# New location: app/core/utils.py. 
+# os.path.abspath(__file__) -> .../app/core/utils.py
+# os.path.dirname(...) -> .../app/core
+# os.path.dirname(os.path.dirname(...)) -> .../app
+APP_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 STATIC_DIR = os.path.join(APP_DIR, "static")
 ALLOWED_CHARS_FILE = os.path.join(STATIC_DIR, "allowed_charset.xlsx")
 _ALLOWED_CHARS = set()

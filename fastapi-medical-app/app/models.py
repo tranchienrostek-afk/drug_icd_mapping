@@ -96,6 +96,35 @@ class DrugConfirmRequest(BaseModel):
     tu_dong_nghia: Optional[str] = None
     modified_by: Optional[str] = "system"
 
+# --- Consult Models ---
+class DrugItem(BaseModel):
+    id: str
+    name: str
+
+class DiagnosisItem(BaseModel):
+    code: str
+    name: str
+    type: str # MAIN / SECONDARY
+
+class ConsultRequest(BaseModel):
+    request_id: str
+    items: List[DrugItem]
+    diagnoses: List[DiagnosisItem]
+    symptom: Optional[str] = None
+
+class ConsultResult(BaseModel):
+    id: str
+    name: str
+    category: str = "drug"
+    validity: str
+    role: str
+    explanation: str
+    source: str
+
+class ConsultResponse(BaseModel):
+    results: List[ConsultResult]
+
+
     model_config = ConfigDict(json_schema_extra={
         "example": {
             "ten_thuoc": "Panadol Extra",

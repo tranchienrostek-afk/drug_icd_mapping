@@ -2,7 +2,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import sys
 sys.path.insert(0, r'C:\Users\Admin\Desktop\drug_icd_mapping\fastapi-medical-app')
-from app.utils import normalize_text
+from app.core.utils import normalize_text
 
 def debug_score():
     query = "Tra Hoang Bach Phong"

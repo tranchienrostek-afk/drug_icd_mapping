@@ -10,7 +10,33 @@ from io import BytesIO
 class LogMiddleware(BaseHTTPMiddleware):
     def __init__(self, app):
         super().__init__(app)
-        self.log_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "logs", "logs_api")
+        # Log dir is now relative to app/core/middleware.py -> up one level is app/core -> up one is app/ -> up one is root
+        # Original: app/middlewares/logging_middleware.py
+        # app/middlewares/ -> app/ -> root (2 levels up)
+        # New: app/core/middleware.py -> app/core/ -> app/ -> root (2 levels up)
+        # It seems the path calculation os.path.dirname(os.path.dirname(__file__)) works the same if depth is same.
+        self.log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "logs", "logs_api")
+        # Wait, if file is app/core/middleware.py:
+        # dirname -> app/core
+        # dirname -> app/
+        # dirname -> app
+        # root is father of app.
+        # Original:
+        # file: app/middlewares/logging.py
+        # dirname: app/middlewares
+        # dirname: app/
+        # logs is at app/../logs ? No, logs usually at project root.
+        # Let's check original logic: os.path.join(os.path.dirname(os.path.dirname(__file__)), "logs", "logs_api")
+        # if file is app/middlewares/log.py -> dir(file) = app/middlewares -> dir(dir) = app/
+        # join(app/, "logs") -> app/logs.
+        # Is logs inside app/? Usually logs is at root. 
+        # If logs is at root (fastapi-medical-app/logs), then we need one more dirname.
+        # Let's assume logs is at root.
+        # New file: app/core/middleware.py.
+        # dir -> app/core
+        # dir -> app/
+        # So it is the same.
+        
         if not os.path.exists(self.log_dir):
             os.makedirs(self.log_dir, exist_ok=True)
 
@@ -53,7 +79,8 @@ class LogMiddleware(BaseHTTPMiddleware):
             # Capture content by iterating the iterator, then reconstructing it
             # This is expensive for large files!
             # Heuristic: Only capture if content-type is json or text
-            if "application/json" in response.media_type or "text/" in response.media_type:
+            media_type = response.media_type or ""
+            if "application/json" in media_type or "text/" in media_type:
                 content = b""
                 async for chunk in response.body_iterator:
                     content += chunk

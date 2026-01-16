@@ -2,7 +2,8 @@ from fastapi import APIRouter
 from app.models import AnalysisRequest
 from app.api.drugs import identify_drugs
 from app.api.diseases import lookup_diseases
-from app.services import analyze_treatment_group, DrugDbEngine
+from app.services import DrugDbEngine
+from app.service.ai_consult_service import analyze_treatment_group
 from app.models import DrugRequest, DiseaseRequest
 
 router = APIRouter()

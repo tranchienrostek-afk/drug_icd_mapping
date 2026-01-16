@@ -42,16 +42,16 @@ Hệ thống Backend (FastAPI + SQLite + Agentic Services) đã hoàn thiện c�
     - Docker Compose plugin.
 4.  **Directory Structure**:
     ```bash
-    mkdir -p /opt/drug_icd_mapping/data
-    mkdir -p /opt/drug_icd_mapping/logs
+    mkdir -p /root/workspace/drug_icd_mapping/data
+    mkdir -p /root/workspace/drug_icd_mapping/logs
     ```
 
 ### Phase 3: Deployment Execution
 1.  **Transfer Source Code**:
     - Option A (Git): Clone repository.
-    - Option B (Manual): `scp -r ./fastapi-medical-app root@10.14.190.28:/opt/drug_icd_mapping/`
+    - Option B (Manual): `scp -r ./fastapi-medical-app root@10.14.190.28:/root/workspace/drug_icd_mapping/`
 2.  **Transfer Data**:
-    - `scp ./medical.db root@10.14.190.28:/opt/drug_icd_mapping/data/`
+    - `scp ./medical.db root@10.14.190.28:/root/workspace/drug_icd_mapping/data/`
 3.  **Configure & Deploy (SAFE MODE)**:
     - **Quan trọng**: Server có nhiều service khác. TUYỆT ĐỐI KHÔNG chạy lệnh `docker-compose down` hoặc `docker system prune -a` bừa bãi.
     - Đặt tên project cụ thể để tránh conflict:

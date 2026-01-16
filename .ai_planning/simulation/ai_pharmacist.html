@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Pharmacist - Treatment Analysis</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;700&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0f172a;
+            --panel: #1e293b;
+            --border: #334155;
+            --accent: #3b82f6;
+            /* Blue for Azure */
+            --success: #10b981;
+            --warning: #f59e0b;
+            --text: #f8fafc;
+            --code-bg: #0f1117;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Space Grotesk', sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        header {
+            padding: 15px 30px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(15, 23, 42, 0.9);
+        }
+
+        .logo {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--accent);
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        /* MAIN LAYOUT */
+        .container {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 300px 1fr 350px;
+            gap: 20px;
+            padding: 20px;
+            overflow: hidden;
+        }
+
+        /* PANELS */
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+        }
+
+        .panel-header {
+            padding: 15px;
+            border-bottom: 1px solid var(--border);
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .panel-body {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        /* INPUT ITEMS */
+        .item-card {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid transparent;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: slideIn 0.3s;
+        }
+
+        .item-card.drug {
+            border-left: 3px solid var(--accent);
+        }
+
+        .item-card.disease {
+            border-left: 3px solid var(--warning);
+        }
+
+        /* CENTER STAGE (THE AI) */
+        .ai-stage {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            height: 100%;
+        }
+
+        .prompt-box {
+            background: var(--code-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 15px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            color: #cbd5e1;
+            max-height: 200px;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .prompt-label {
+            position: absolute;
+            top: 5px;
+            right: 10px;
+            font-size: 0.7rem;
+            color: #64748b;
+            text-transform: uppercase;
+        }
+
+        .ai-brain {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%);
+        }
+
+        .brain-icon {
+            font-size: 5rem;
+            color: var(--accent);
+            filter: drop-shadow(0 0 20px var(--accent));
+            transition: 0.5s;
+        }
+
+        .brain-icon.thinking {
+            animation: pulse 1s infinite;
+            color: #a855f7;
+        }
+
+        /* JSON OUTPUT */
+        .json-block {
+            background: #000;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono';
+            font-size: 0.8rem;
+            color: #a5f3fc;
+            white-space: pre-wrap;
+            display: none;
+            border: 1px solid var(--success);
+        }
+
+        /* RESULT CARDS */
+        .result-card {
+            background: #1e293b;
+            border: 1px solid var(--border);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            position: relative;
+            overflow: hidden;
+            transition: 0.3s;
+            opacity: 0;
+            transform: translateX(20px);
+        }
+
+        .result-card.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .res-valid {
+            border-left: 5px solid var(--success);
+        }
+
+        .res-warning {
+            border-left: 5px solid var(--warning);
+        }
+
+        .res-header {
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .res-role {
+            font-size: 0.75rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .res-exp {
+            font-size: 0.85rem;
+            color: #94a3b8;
+            line-height: 1.4;
+        }
+
+        /* CONTROLS */
+        .control-bar {
+            height: 70px;
+            border-top: 1px solid var(--border);
+            background: #0b0f19;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            font-family: 'Space Grotesk';
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            filter: brightness(1.2);
+            transform: translateY(-2px);
+        }
+
+        .btn-reset {
+            background: transparent;
+            border: 1px solid #444;
+            color: #888;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* ANIMATIONS */
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.1);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        .status-pill {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            background: #334155;
+            color: #fff;
+        }
+
+        .status-pill.active {
+            background: var(--success);
+            color: #000;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div class="logo"><i class="fa-solid fa-robot"></i> AI PHARMACIST <span
+                style="font-size:0.8rem; color:#64748b; margin-left:10px">Azure OpenAI Wrapper</span></div>
+        <div class="status-pill" id="status">Ready</div>
+    </header>
+
+    <div class="container">
+
+        <div class="panel">
+            <div class="panel-header">
+                Input Data (Python Lists)
+                <button class="btn-reset" style="padding:5px 10px; font-size:0.8rem" onclick="addRandom()">+
+                    Random</button>
+            </div>
+            <div class="panel-body" id="inputList">
+                <div class="item-card drug">
+                    <i class="fa-solid fa-capsules"></i> Panadol Extra
+                </div>
+                <div class="item-card drug">
+                    <i class="fa-solid fa-pills"></i> Augmentin 1g
+                </div>
+                <div class="item-card disease">
+                    <i class="fa-solid fa-virus"></i> Cảm cúm (Flu)
+                </div>
+                <div class="item-card disease">
+                    <i class="fa-solid fa-head-side-virus"></i> Đau đầu (Headache)
+                </div>
+            </div>
+        </div>
+
+        <div class="panel" style="background: #111;">
+            <div class="panel-header">AI Processing Unit</div>
+            <div class="panel-body">
+
+                <div class="prompt-box" id="strBox" style="height:60px; display:none">
+                    <span class="prompt-label">1. String Conversion</span>
+                    <div id="strContent"></div>
+                </div>
+
+                <div class="prompt-box" id="promptBox" style="flex:1; display:none">
+                    <span class="prompt-label">2. Constructed Prompt</span>
+                    <div style="color:#64748b">SYSTEM: Bạn là dược sĩ AI... Output JSON...</div>
+                    <hr style="border-color:#333; margin:10px 0">
+                    <div id="userPromptContent" style="color:#e2e8f0"></div>
+                </div>
+
+                <div class="ai-brain" id="brainBox">
+                    <i class="fa-solid fa-brain brain-icon" id="brainIcon"></i>
+                </div>
+
+                <div class="json-block" id="jsonBox"></div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">Wrapper Output (Annotated)</div>
+            <div class="panel-body" id="resultList">
+                <div style="color:#64748b; text-align:center; margin-top:50px">Waiting for analysis...</div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="control-bar">
+        <button class="btn btn-reset" onclick="location.reload()"><i class="fa-solid fa-rotate-right"></i>
+            Reset</button>
+        <button class="btn btn-primary" id="btnAnalyze" onclick="runSimulation()">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> ANALYZE TREATMENT
+        </button>
+    </div>
+
+    <script>
+        // --- DATA ---
+        let drugs = ["Panadol Extra", "Augmentin 1g"];
+        let diseases = ["Cảm cúm", "Đau đầu"];
+
+        // --- MOCK AI LOGIC ---
+        // Giả lập kiến thức y khoa đơn giản để trả về JSON
+        function mockAIResponse(drugList, diseaseList) {
+            const analysis = drugList.map(drug => {
+                let suitable = false;
+                let role = "none";
+                let explanation = "Không rõ công dụng trong trường hợp này.";
+
+                const d = drug.toLowerCase();
+                const ds = diseaseList.join(" ").toLowerCase();
+
+                if (d.includes("panadol") || d.includes("paracetamol")) {
+                    if (ds.includes("đau") || ds.includes("sốt") || ds.includes("cảm")) {
+                        suitable = true; role = "main";
+                        explanation = "Giảm đau hạ sốt hiệu quả cho triệu chứng cảm cúm/đau đầu.";
+                    }
+                }
+                else if (d.includes("augmentin") || d.includes("kháng sinh")) {
+                    if (ds.includes("nhiễm khuẩn") || ds.includes("viêm")) {
+                        suitable = true; role = "main";
+                        explanation = "Kháng sinh điều trị nhiễm khuẩn.";
+                    } else if (ds.includes("cảm") || ds.includes("virus")) {
+                        suitable = false; role = "none";
+                        explanation = "Không khuyến cáo dùng kháng sinh cho bệnh do virus (cảm cúm) trừ khi có bội nhiễm.";
+                    }
+                }
+                else if (d.includes("vitamin")) {
+                    suitable = true; role = "supportive";
+                    explanation = "Tăng cường sức đề kháng.";
+                }
+
+                return {
+                    drug: drug,
+                    suitable: suitable,
+                    role: role,
+                    explanation: explanation
+                };
+            });
+
+            return {
+                analysis: analysis,
+                summary: "Phác đồ điều trị cần thận trọng với kháng sinh."
+            };
+        }
+
+        const wait = ms => new Promise(r => setTimeout(r, ms));
+
+        // --- SIMULATION ---
+        async function runSimulation() {
+            const btn = document.getElementById('btnAnalyze');
+            btn.disabled = true;
+            document.getElementById('status').innerText = "Running Wrapper...";
+            document.getElementById('status').classList.add('active');
+
+            // Clear previous
+            document.getElementById('strBox').style.display = 'none';
+            document.getElementById('promptBox').style.display = 'none';
+            document.getElementById('jsonBox').style.display = 'none';
+            document.getElementById('resultList').innerHTML = '';
+            document.getElementById('brainBox').style.display = 'flex';
+
+            // STEP 1: String Conversion (Wrapper Logic)
+            await wait(500);
+            document.getElementById('strBox').style.display = 'block';
+            const drugsStr = drugs.join(", ");
+            const diseaseStr = diseases.join(", ");
+            document.getElementById('strContent').innerHTML = `
+                <div style="color:#a5f3fc">drugs_str = "${drugsStr}"</div>
+                <div style="color:#fcd34d">diseases_str = "${diseaseStr}"</div>
+            `;
+
+            // STEP 2: Prompt Construction
+            await wait(1000);
+            document.getElementById('promptBox').style.display = 'block';
+            document.getElementById('userPromptContent').innerText = `USER PROMPT:\nDanh sách thuốc: ${drugsStr}\nChẩn đoán: ${diseaseStr}\nHãy phân tích...`;
+
+            // STEP 3: Calling Azure OpenAI
+            await wait(500);
+            const brain = document.getElementById('brainIcon');
+            brain.classList.add('thinking');
+            document.getElementById('status').innerText = "Calling Azure OpenAI...";
+
+            // Simulate Network Latency
+            await wait(2500);
+            brain.classList.remove('thinking');
+            document.getElementById('brainBox').style.display = 'none';
+
+            // STEP 4: Receive JSON
+            document.getElementById('status').innerText = "Parsing JSON...";
+            const jsonRes = mockAIResponse(drugs, diseases);
+            const jsonBox = document.getElementById('jsonBox');
+            jsonBox.innerText = JSON.stringify(jsonRes, null, 2);
+            jsonBox.style.display = 'block';
+
+            // STEP 5: Mapping Wrapper (The Loop)
+            await wait(1000);
+            document.getElementById('status').innerText = "Mapping Results...";
+
+            const container = document.getElementById('resultList');
+            container.innerHTML = ''; // Clear waiting message
+
+            // Map original list to result
+            for (let i = 0; i < drugs.length; i++) {
+                const originalDrug = drugs[i];
+                // Find in AI response (Simulating the dictionary lookup map)
+                const aiInfo = jsonRes.analysis.find(item => item.drug === originalDrug) || { suitable: false, role: 'unknown', explanation: 'No data' };
+
+                await wait(600); // Visual delay for loop effect
+
+                const card = document.createElement('div');
+                card.className = `result-card ${aiInfo.suitable ? 'res-valid' : 'res-warning'}`;
+                card.innerHTML = `
+                    <div class="res-header">
+                        <span>${originalDrug}</span>
+                        <span class="res-role" style="background:${aiInfo.suitable ? '#064e3b' : '#451a03'}">${aiInfo.role.toUpperCase()}</span>
+                    </div>
+                    <div class="res-exp">${aiInfo.explanation}</div>
+                `;
+                container.appendChild(card);
+
+                // Trigger animation
+                requestAnimationFrame(() => card.classList.add('show'));
+            }
+
+            document.getElementById('status').innerText = "Complete";
+            document.getElementById('status').classList.remove('active');
+            btn.disabled = false;
+        }
+
+        // --- UTILS ---
+        function addRandom() {
+            const extraDrugs = ["Vitamin C", "Ibuprofen", "Corticoid"];
+            const r = extraDrugs[Math.floor(Math.random() * extraDrugs.length)];
+            drugs.push(r);
+
+            const div = document.createElement('div');
+            div.className = 'item-card drug';
+            div.innerHTML = `<i class="fa-solid fa-capsules"></i> ${r}`;
+            document.getElementById('inputList').appendChild(div);
+        }
+
+    </script>
+</body>
+
+</html>

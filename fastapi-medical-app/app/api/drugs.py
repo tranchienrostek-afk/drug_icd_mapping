@@ -2,11 +2,13 @@ from fastapi import APIRouter, HTTPException
 from app.models import DrugRequest, DrugConfirmRequest, DrugDiseaseLinkRequest, DrugStagingResponse, DrugHistoryResponse, DrugStagingUpdateRequest
 from typing import List
 from app.services import DrugDbEngine
-from app.service.crawler import scrape_drug_web_advanced as scrape_drug_web
-from app.utils import normalize_drug_name
+from app.service.drug_identification_service import DrugIdentificationService
+# from app.service.crawler import scrape_drug_web_advanced as scrape_drug_web # Moved to Service
+# from app.core.utils import normalize_drug_name # Moved to Service
 
 router = APIRouter()
 db = DrugDbEngine()
+identification_service = DrugIdentificationService(search_service=db.search_service) # Reuse search service from DB engine
 
 @router.post("/knowledge/link")
 async def link_drug_knowledge(payload: DrugDiseaseLinkRequest):
@@ -91,95 +93,13 @@ async def clear_all_staging_items():
 
 @router.post("/identify")
 async def identify_drugs(payload: DrugRequest):
-    results = []
-    seen_sdk = {} # Để check trùng lặp thuốc dựa trên SĐK
-    
-    # Pre-process unique list to avoid duplicates
-    input_drugs = list(dict.fromkeys(payload.drugs))
-    
-    for drug_raw in input_drugs:
-        drug_data = None
-        keyword = drug_raw.strip()
-        
-        # --- NEW: Normalization ---
-        normalized = normalize_drug_name(keyword)
-        if normalized:
-             print(f"Normalized: '{keyword}' -> '{normalized}'")
-             keyword = normalized # Use normalized name for search
-        # --------------------------
-        
-        # 1. Start with Smart DB Search
-        db_result = await db.search_drug_smart(keyword)
-        
-        # Logic to decide if we stop or go to Web
-        # User defined levels:
-        # 100% (Exact) -> Stop
-        # 95% (Partial) -> Stop? User said "Verified -> 95%". If verified & has SDK, usually good enough.
-        # 90% (Vector) -> Stop if verified.
-        # User said: "If verified with SDK -> Select... If not verified -> Search Web"
-        
-        use_db = False
-        if db_result:
-            conf = db_result.get('confidence', 0)
-            data = db_result.get('data', {})
-            # Check verified status just to be fastidious (DB logic already filters verified=1 but let's be safe)
-            if data.get('so_dang_ky') and data.get('is_verified') == 1:
-                use_db = True
-        
-            if use_db:
-                 info = db_result['data']
-                 drug_data = {
-                    "input_name": drug_raw,
-                    "official_name": info.get('ten_thuoc'),
-                    "sdk": info.get('so_dang_ky'),
-                    "active_ingredient": info.get('hoat_chat'),
-                    "usage": info.get('chi_dinh', 'N/A'),
-                    "classification": info.get('classification'),
-                    "note": info.get('note'),
-                    "source": db_result.get('source'),
-                    "confidence": db_result.get('confidence'),
-                    "source_urls": [] # Database source
-                }
-            else:
-                # 2. Web Search Fallback
-                # Only search if DB didn't yield a high confidence verified result
-                web_info = await scrape_drug_web(keyword)
-                
-                if web_info:
-                    info = web_info
-                    drug_data = {
-                        "input_name": drug_raw,
-                        "official_name": info.get('ten_thuoc'),
-                        "sdk": info.get('so_dang_ky'),
-                        "active_ingredient": info.get('hoat_chat'),
-                        "usage": info.get('chi_dinh', 'N/A'),
-                        "contraindications": info.get('chong_chi_dinh'),
-                        "dosage": info.get('lieu_dung'),
-                        "source": info.get('source', "Web"),
-                        "confidence": info.get('confidence', 0.8),
-                        "source_urls": info.get('source_urls', [])
-                    }
-                elif db_result:
-                     # Web failed, but we had a partial DB match?
-                     pass
-        
-        if drug_data:
-            # Logic check trùng trong batch hiện tại
-            sdk = drug_data.get('sdk')
-            if sdk and sdk not in ['N/A', 'Web Result (No SDK)']:
-                if sdk in seen_sdk:
-                    drug_data["is_duplicate"] = True
-                    drug_data["duplicate_of"] = seen_sdk[sdk]
-                else:
-                    drug_data["is_duplicate"] = False
-                    seen_sdk[sdk] = drug_raw
-            else:
-                 drug_data["is_duplicate"] = False
-            
-            results.append(drug_data)
-        else:
-             results.append({"input_name": drug_raw, "status": "Not Found"})
-             
+    """
+    Nhận dạng thuốc:
+    1. Chuẩn hóa tên thuốc.
+    2. Tìm trong DB (Smart Search).
+    3. Nếu không có hoặc chưa verified -> Tìm Web.
+    """
+    results = await identification_service.process_batch(payload.drugs)
     return {"results": results}
 
 from app.service.agent_search_service import run_agent_search

@@ -7,7 +7,7 @@ from .core_drug import scrape_single_site_drug
 from .google_search import GoogleSearchService
 from .search_engines import search_drug_links
 from .stealth_config import BROWSER_ARGS
-from app.utils import normalize_for_search
+from app.core.utils import normalize_for_search
 
 async def scrape_drug_web_advanced(keyword, **kwargs):
     """

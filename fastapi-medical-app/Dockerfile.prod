@@ -1,0 +1,17 @@
+# Use official Playwright image
+FROM mcr.microsoft.com/playwright/python:v1.40.0-jammy
+
+WORKDIR /app
+
+# Copy requirement first for caching
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install browsers
+RUN playwright install --with-deps chromium
+
+# Copy app code
+COPY . .
+
+# Run production server (no reload, workers)
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]

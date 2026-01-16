@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pharma String Lab - Normalizer Visualization</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&family=Montserrat:wght@400;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg: #101014;
+            --panel: #1e1e24;
+            --accent: #00e0ff;
+            --accent-glow: rgba(0, 224, 255, 0.3);
+            --process-1: #ff0055;
+            /* Complex */
+            --process-2: #ffd700;
+            /* DB Match */
+            --process-3: #00ff9d;
+            /* Search */
+            --text: #e0e0e0;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Montserrat', sans-serif;
+            height: 100vh;
+            display: grid;
+            grid-template-rows: 80px 1fr;
+            overflow: hidden;
+        }
+
+        /* HEADER */
+        header {
+            background: rgba(30, 30, 36, 0.9);
+            border-bottom: 1px solid #333;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 30px;
+            z-index: 10;
+        }
+
+        h1 {
+            font-family: 'Roboto Mono';
+            font-size: 1.5rem;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        input[type="text"] {
+            background: #000;
+            border: 1px solid #444;
+            padding: 10px 15px;
+            color: #fff;
+            font-family: 'Roboto Mono';
+            font-size: 1rem;
+            width: 400px;
+            border-radius: 4px;
+            outline: none;
+            transition: 0.3s;
+        }
+
+        input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        /* LAB AREA */
+        .lab-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            padding: 20px;
+            gap: 20px;
+            overflow-y: auto;
+        }
+
+        .machine {
+            background: var(--panel);
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            transition: 0.3s;
+        }
+
+        .machine:hover {
+            transform: translateY(-5px);
+            border-color: #555;
+        }
+
+        .m-header {
+            padding: 15px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .m-body {
+            flex: 1;
+            padding: 20px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            background-image: radial-gradient(#333 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        /* BUTTONS */
+        .btn-run {
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-family: 'Roboto Mono';
+            text-transform: uppercase;
+            transition: 0.2s;
+            color: #000;
+        }
+
+        .btn-run:hover {
+            filter: brightness(1.2);
+            transform: scale(1.05);
+        }
+
+        .btn-complex {
+            background: var(--process-1);
+            box-shadow: 0 0 10px var(--process-1);
+        }
+
+        .btn-db {
+            background: var(--process-2);
+            box-shadow: 0 0 10px var(--process-2);
+        }
+
+        .btn-search {
+            background: var(--process-3);
+            box-shadow: 0 0 10px var(--process-3);
+        }
+
+        /* ANIMATION ELEMENTS */
+        .capsule {
+            background: #333;
+            padding: 10px 15px;
+            border-radius: 20px;
+            border: 2px solid #555;
+            font-family: 'Roboto Mono';
+            font-size: 0.9rem;
+            color: #fff;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: 0.5s;
+            position: relative;
+        }
+
+        .capsule.dose {
+            border-color: var(--process-1);
+            color: var(--process-1);
+        }
+
+        .capsule.active {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .conveyor {
+            width: 100%;
+            height: 4px;
+            background: #444;
+            position: relative;
+            margin: 10px 0;
+        }
+
+        .scanner-beam {
+            position: absolute;
+            width: 4px;
+            height: 40px;
+            background: var(--process-3);
+            top: -18px;
+            box-shadow: 0 0 15px var(--process-3);
+            transition: left 0.1s linear;
+        }
+
+        .result-box {
+            margin-top: auto;
+            width: 100%;
+            padding: 15px;
+            background: #000;
+            border-top: 1px solid #333;
+            font-family: 'Roboto Mono';
+            color: var(--accent);
+            min-height: 60px;
+            word-break: break-all;
+        }
+
+        /* SPECIFIC ANIMATIONS */
+        .step-log {
+            font-size: 0.8rem;
+            color: #888;
+            width: 100%;
+            text-align: left;
+            border-left: 2px solid #444;
+            padding-left: 10px;
+            margin-bottom: 5px;
+            opacity: 0;
+            animation: fadeIn 0.3s forwards;
+        }
+
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes popOut {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.2);
+            }
+
+            100% {
+                transform: scale(0);
+                opacity: 0;
+            }
+        }
+
+        .removed {
+            animation: popOut 0.5s forwards;
+        }
+
+        .char-box {
+            display: inline-block;
+            width: 25px;
+            height: 35px;
+            border: 1px solid #555;
+            text-align: center;
+            line-height: 35px;
+            font-family: 'Roboto Mono';
+            margin: 2px;
+            transition: 0.2s;
+        }
+
+        .char-valid {
+            background: rgba(0, 255, 157, 0.2);
+            border-color: var(--process-3);
+        }
+
+        .char-invalid {
+            background: rgba(255, 0, 85, 0.2);
+            border-color: var(--process-1);
+            color: var(--process-1);
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <h1><i class="fa-solid fa-flask"></i> Pharma String Lab</h1>
+        <div class="controls">
+            <input type="text" id="mainInput" value="Candesartan 16mg + Hydrochlorothiazide 12.5mg">
+        </div>
+    </header>
+
+    <div class="lab-container">
+
+        <div class="machine" style="border-top: 4px solid var(--process-1)">
+            <div class="m-header">
+                <span>1. Complex Splitter</span>
+                <button class="btn-run btn-complex" onclick="runComplex()">Analyze</button>
+            </div>
+            <div class="m-body" id="complexStage">
+                <div style="color:#666; font-style:italic">Chờ dữ liệu...</div>
+            </div>
+            <div class="result-box" id="resComplex">Result: ...</div>
+        </div>
+
+        <div class="machine" style="border-top: 4px solid var(--process-2)">
+            <div class="m-header">
+                <span>2. DB Match Crusher</span>
+                <button class="btn-run btn-db" onclick="runDB()">Crush</button>
+            </div>
+            <div class="m-body" id="dbStage">
+                <div style="color:#666; font-style:italic">Chờ dữ liệu...</div>
+            </div>
+            <div class="result-box" id="resDB">Result: ...</div>
+        </div>
+
+        <div class="machine" style="border-top: 4px solid var(--process-3)">
+            <div class="m-header">
+                <span>3. Search Gatekeeper</span>
+                <button class="btn-run btn-search" onclick="runSearch()">Scan</button>
+            </div>
+            <div class="m-body" id="searchStage">
+                <div style="color:#666; font-style:italic">Chờ dữ liệu...</div>
+            </div>
+            <div class="result-box" id="resSearch">Result: ...</div>
+        </div>
+
+    </div>
+
+    <div style="display:none" id="allowedChars">abcdefghijklmnopqrstuvwxyz0123456789-+%. </div>
+
+    <script>
+        const wait = ms => new Promise(r => setTimeout(r, ms));
+
+        // --- MACHINE 1: COMPLEX NORMALIZER LOGIC ---
+        async function runComplex() {
+            const input = document.getElementById('mainInput').value;
+            const stage = document.getElementById('complexStage');
+            const resBox = document.getElementById('resComplex');
+
+            stage.innerHTML = '';
+            resBox.innerText = 'Processing...';
+
+            // 1. Lowercase & Clean
+            log(stage, "1. Tiền xử lý: Lowercase & Trim");
+            let text = input.toLowerCase().replace(/\s+/g, ' ').trim();
+            createCapsule(stage, text, 'raw');
+            await wait(800);
+
+            // 2. Extract Doses (Regex: \d+(?:\.\d+)?\s*(mg|g|mcg|iu|ml|l))
+            log(stage, "2. Regex Extract: Tách Liều Lượng");
+            const doseRegex = /\d+(?:\.\d+)?\s*(mg|g|mcg|iu|ml|l)/g;
+            const doses = text.match(doseRegex) || [];
+
+            // Visual removal
+            const doseContainer = document.createElement('div');
+            doseContainer.style.display = 'flex'; doseContainer.style.gap = '5px';
+            stage.appendChild(doseContainer);
+
+            for (let d of doses) {
+                createCapsule(doseContainer, d, 'dose');
+                await wait(200);
+            }
+
+            // Remove doses from text
+            let textWoDose = text.replace(doseRegex, ' ').replace(/\s+/g, ' ').trim();
+            stage.children[1].innerHTML = `<i class="fa-solid fa-capsules"></i> ${textWoDose}`; // Update raw capsule view
+            await wait(800);
+
+            // 3. Split Actives
+            log(stage, "3. Split: Tách Hoạt Chất (Separator: +, /, and)");
+            const acts = textWoDose.split(/\+|@|\/|,|\band\b|\bva\b/);
+            const actContainer = document.createElement('div');
+            actContainer.style.display = 'flex'; actContainer.style.gap = '5px';
+            stage.appendChild(actContainer);
+
+            let cleanActs = [];
+            for (let a of acts) {
+                let clean = a.replace(/\([^)]*\)/g, '').trim(); // Remove ()
+                if (clean.length >= 2) {
+                    // Title Case
+                    clean = clean.charAt(0).toUpperCase() + clean.slice(1);
+                    cleanActs.push(clean);
+                    createCapsule(actContainer, clean, 'active');
+                    await wait(300);
+                }
+            }
+
+            // 4. Merge
+            log(stage, "4. Re-Assemble: Ghép (Hoạt chất + Liều)");
+            let finals = [];
+            for (let i = 0; i < cleanActs.length; i++) {
+                let pair = cleanActs[i];
+                if (i < doses.length) pair += " " + doses[i].replace(/\s+/g, ''); // Normalize dose space
+                finals.push(pair);
+            }
+
+            const result = finals.join(" + ");
+            resBox.innerText = result || "Null (Invalid)";
+            resBox.style.color = varColor('--process-1');
+        }
+
+        // --- MACHINE 2: DB MATCHING LOGIC ---
+        async function runDB() {
+            const input = document.getElementById('mainInput').value;
+            const stage = document.getElementById('dbStage');
+            const resBox = document.getElementById('resDB');
+            stage.innerHTML = '';
+
+            // Animation helper
+            const display = document.createElement('div');
+            display.style.fontSize = "1.2rem";
+            display.style.fontWeight = "bold";
+            display.innerText = input;
+            stage.appendChild(display);
+
+            // 1. Lowercase
+            await logStep(stage, "Step 1: Ép thường (Lowercase)");
+            let text = input.toLowerCase();
+            display.innerText = text;
+            display.style.color = "#aaa";
+            await wait(800);
+
+            // 2. Unidecode (Remove Accents)
+            await logStep(stage, "Step 2: Gỡ bỏ dấu tiếng Việt (Unidecode)");
+            text = text.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            text = text.replace(/đ/g, "d");
+            display.innerText = text;
+            display.style.color = "#fff";
+            await wait(800);
+
+            // 3. Remove Special Chars
+            await logStep(stage, "Step 3: Lọc ký tự rác (Chỉ giữ a-z, 0-9, + - %)");
+            // Simulate visual filtering
+            let visualText = "";
+            const allowed = /[a-z0-9\s\-\+\%\.]/;
+
+            for (let char of text) {
+                if (allowed.test(char)) {
+                    visualText += char;
+                } else {
+                    visualText += `<span style="color:red; text-decoration:line-through">${char}</span>`;
+                }
+            }
+            display.innerHTML = visualText;
+            await wait(1000);
+
+            // Finalize
+            text = text.replace(/[^a-z0-9\s\-\+\%\.]/g, ' ').replace(/\s+/g, ' ').trim();
+            display.innerText = text;
+            resBox.innerText = text;
+            resBox.style.color = varColor('--process-2');
+        }
+
+        // --- MACHINE 3: SEARCH LOGIC ---
+        async function runSearch() {
+            const input = document.getElementById('mainInput').value;
+            const stage = document.getElementById('searchStage');
+            const resBox = document.getElementById('resSearch');
+            stage.innerHTML = '';
+
+            // Create Grid View
+            const grid = document.createElement('div');
+            stage.appendChild(grid);
+
+            const allowedChars = document.getElementById('allowedChars').innerText;
+            let result = "";
+            let stopped = false;
+
+            for (let char of input) {
+                const box = document.createElement('div');
+                box.className = 'char-box';
+                box.innerText = char;
+                grid.appendChild(box);
+            }
+
+            // Scanning Animation
+            const boxes = grid.querySelectorAll('.char-box');
+
+            for (let i = 0; i < boxes.length; i++) {
+                const box = boxes[i];
+                const char = box.innerText.toLowerCase(); // Simple normalization for check
+
+                // Scan Effect
+                box.style.borderColor = 'white';
+                box.style.boxShadow = '0 0 10px white';
+                await wait(100); // Scan speed
+
+                if (stopped) {
+                    box.style.opacity = "0.2";
+                    box.style.borderColor = "#333";
+                    box.style.boxShadow = "none";
+                    continue;
+                }
+
+                if (allowedChars.includes(char)) {
+                    box.classList.add('char-valid');
+                    result += box.innerText; // Keep original case or logic? Python code just appends.
+                } else {
+                    box.classList.add('char-invalid');
+                    await logStep(stage, `⛔ STOP! Ký tự không hợp lệ: "${char}"`);
+                    stopped = true;
+                }
+
+                box.style.boxShadow = "none";
+            }
+
+            resBox.innerText = result;
+            resBox.style.color = stopped ? '#ff4444' : varColor('--process-3');
+        }
+
+        // --- UTILS ---
+        function createCapsule(parent, text, type) {
+            const el = document.createElement('div');
+            el.className = `capsule ${type}`;
+            el.innerHTML = type === 'dose' ? `<i class="fa-solid fa-prescription-bottle"></i> ${text}` :
+                type === 'raw' ? `<i class="fa-solid fa-capsules"></i> ${text}` :
+                    `<i class="fa-solid fa-tablets"></i> ${text}`;
+            parent.appendChild(el);
+        }
+
+        function log(parent, msg) {
+            const div = document.createElement('div');
+            div.className = 'step-log';
+            div.innerText = `> ${msg}`;
+            parent.appendChild(div);
+            parent.scrollTop = parent.scrollHeight;
+        }
+
+        async function logStep(parent, msg) {
+            log(parent, msg);
+            await wait(200);
+        }
+
+        function varColor(name) {
+            return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+        }
+
+    </script>
+</body>
+
+</html>

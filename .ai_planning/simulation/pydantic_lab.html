@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pydantic Lab: Data Schemas</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;600;800&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0f172a;
+            --panel: #1e293b;
+            --border: #334155;
+            --accent: #ec4899;
+            /* Pink for Pydantic */
+            --highlight: #f472b6;
+            --text: #f8fafc;
+            --success: #10b981;
+            --type-str: #a5f3fc;
+            --type-int: #fcd34d;
+            --type-list: #c4b5fd;
+            --type-obj: #86efac;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            height: 100vh;
+            display: grid;
+            grid-template-columns: 350px 1fr 400px;
+            overflow: hidden;
+        }
+
+        /* --- LEFT: CODE VIEWER --- */
+        .sidebar {
+            background: #0b1120;
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar-header {
+            padding: 15px;
+            border-bottom: 1px solid var(--border);
+            font-weight: bold;
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .model-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .model-btn {
+            padding: 10px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            color: #94a3b8;
+            transition: 0.2s;
+            border: 1px solid transparent;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .model-btn:hover {
+            background: #1e293b;
+            color: #fff;
+        }
+
+        .model-btn.active {
+            background: rgba(236, 72, 153, 0.1);
+            border-color: var(--accent);
+            color: var(--highlight);
+            font-weight: bold;
+        }
+
+        .model-tag {
+            font-size: 0.7rem;
+            background: #334155;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        /* --- CENTER: FORM BUILDER --- */
+        .stage {
+            background-color: var(--bg);
+            display: flex;
+            flex-direction: column;
+            padding: 30px;
+            overflow-y: auto;
+            align-items: center;
+            background-image: radial-gradient(#334155 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+
+        .form-card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            width: 100%;
+            max-width: 700px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+            animation: slideUp 0.4s ease;
+            display: none;
+        }
+
+        .form-card.show {
+            display: block;
+        }
+
+        .form-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px 12px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .form-title {
+            font-family: 'JetBrains Mono';
+            font-size: 1.2rem;
+            color: var(--accent);
+        }
+
+        .form-body {
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* INPUT GROUPS */
+        .field-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            position: relative;
+        }
+
+        .label-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            font-family: 'JetBrains Mono';
+        }
+
+        .label-name {
+            color: #fff;
+            font-weight: bold;
+        }
+
+        .label-type {
+            color: #94a3b8;
+            background: #334155;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        textarea {
+            background: #0f172a;
+            border: 1px solid var(--border);
+            color: #fff;
+            padding: 12px;
+            border-radius: 6px;
+            font-family: 'Inter';
+            font-size: 0.9rem;
+            width: 100%;
+            transition: 0.2s;
+            outline: none;
+        }
+
+        input:focus,
+        textarea:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.2);
+        }
+
+        /* LIST & NESTED UI */
+        .list-container {
+            border: 1px dashed var(--border);
+            padding: 15px;
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .list-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 0.8rem;
+            color: var(--type-list);
+            font-weight: bold;
+        }
+
+        .list-items {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .list-item {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            animation: fadeIn 0.3s;
+        }
+
+        .nested-obj {
+            border-left: 3px solid var(--type-obj);
+            padding-left: 15px;
+            margin-top: 5px;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 10px;
+            border-radius: 0 6px 6px 0;
+            width: 100%;
+        }
+
+        .btn-add {
+            background: #334155;
+            color: #fff;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+
+        .btn-remove {
+            color: #ef4444;
+            cursor: pointer;
+            background: transparent;
+            border: none;
+            font-size: 1rem;
+        }
+
+        .btn-magic {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        /* --- RIGHT: VALIDATION --- */
+        .output-panel {
+            background: #0b1120;
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .out-header {
+            padding: 15px;
+            font-weight: bold;
+            border-bottom: 1px solid var(--border);
+            background: #1e293b;
+        }
+
+        .json-viewer {
+            flex: 1;
+            padding: 20px;
+            font-family: 'JetBrains Mono';
+            font-size: 0.85rem;
+            overflow: auto;
+            color: #cbd5e1;
+            white-space: pre-wrap;
+        }
+
+        .valid-badge {
+            margin-top: auto;
+            padding: 20px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+            display: none;
+        }
+
+        .valid-badge.ok {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+            display: block;
+            border-top: 1px solid var(--success);
+        }
+
+        .valid-badge.error {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            display: block;
+            border-top: 1px solid #ef4444;
+        }
+
+        /* KEYWORD COLORS */
+        .k-key {
+            color: #f472b6;
+        }
+
+        .k-str {
+            color: #a5f3fc;
+        }
+
+        .k-num {
+            color: #fcd34d;
+        }
+
+        .k-bool {
+            color: #c4b5fd;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <i class="fa-solid fa-shapes"></i> PYDANTIC MODELS
+        </div>
+        <div class="model-list" id="modelList">
+        </div>
+    </div>
+
+    <div class="stage">
+        <div id="placeholder" style="color:#64748b; text-align:center; margin-top:100px">
+            <i class="fa-solid fa-arrow-left" style="font-size:2rem; margin-bottom:15px"></i><br>
+            Chọn một Model bên trái để bắt đầu nhập liệu
+        </div>
+
+        <div class="form-card" id="formCard">
+            <div class="form-header">
+                <div class="form-title" id="formTitle">ModelName</div>
+                <button class="btn-magic" onclick="fillExample()">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> Load Example
+                </button>
+            </div>
+            <div class="form-body" id="formBody">
+            </div>
+        </div>
+    </div>
+
+    <div class="output-panel">
+        <div class="out-header"><i class="fa-solid fa-code"></i> LIVE VALIDATION (JSON)</div>
+        <div class="json-viewer" id="jsonOutput">Waiting for data...</div>
+        <div class="valid-badge" id="validBadge">
+            <i class="fa-solid fa-check-circle"></i> DATA VALIDATED
+        </div>
+    </div>
+
+    <script>
+        // --- DATA SCHEMA (Mirroring the Python code) ---
+        const SCHEMAS = {
+            "DrugInput": {
+                fields: { name: { type: "str", required: true } },
+                example: { name: "Paracetamol" }
+            },
+            "DiagnosisInput": {
+                fields: { name: { type: "str", required: true }, icd10: { type: "str", required: true } },
+                example: { name: "Acute pharyngitis", icd10: "J02.9" }
+            },
+            "DrugRequest": {
+                fields: { drugs: { type: "List[str]", required: true } },
+                example: { drugs: ["Ludox - 200mg", "Berodual 200 liều"] }
+            },
+            "DiseaseRequest": {
+                fields: { diagnosis: { type: "List[DiagnosisInput]", required: true } },
+                example: { diagnosis: [{ name: "Acute pharyngitis", icd10: "J02.9" }] }
+            },
+            "AnalysisRequest": {
+                fields: {
+                    drugs: { type: "List[str]", required: true },
+                    diagnosis: { type: "List[DiagnosisInput]", required: true }
+                },
+                example: {
+                    diagnosis: [{ icd10: "E11", name: "Tiểu đường" }, { icd10: "I10", name: "Cao huyết áp" }],
+                    drugs: ["Cetirizin 10mg", "Rotundin 60mg"]
+                }
+            },
+            "DrugConfirmRequest": {
+                fields: {
+                    ten_thuoc: { type: "str", required: true },
+                    so_dang_ky: { type: "str", required: true },
+                    hoat_chat: { type: "str", required: true },
+                    chi_dinh: { type: "str", required: true },
+                    cong_ty_san_xuat: { type: "str", required: true },
+                    tu_dong_nghia: { type: "Optional[str]", required: false },
+                    modified_by: { type: "Optional[str]", required: false, default: "system" }
+                },
+                example: { ten_thuoc: "Panadol", so_dang_ky: "VN-123", hoat_chat: "Para", chi_dinh: "Đau đầu", cong_ty_san_xuat: "GSK", tu_dong_nghia: "Thuốc đỏ" }
+            },
+            "DrugDiseaseLinkRequest": {
+                fields: {
+                    drug_name: { type: "str", required: true },
+                    sdk: { type: "Optional[str]", required: false },
+                    disease_name: { type: "str", required: true },
+                    icd_code: { type: "Optional[str]", required: false },
+                    is_verified: { type: "int", required: false }
+                },
+                example: { drug_name: "Panadol Extra", disease_name: "Đau đầu", icd_code: "R51", is_verified: 1 }
+            }
+        };
+
+        let currentModel = null;
+        let formData = {};
+
+        // --- INIT UI ---
+        const modelList = document.getElementById('modelList');
+        Object.keys(SCHEMAS).forEach(key => {
+            const div = document.createElement('div');
+            div.className = 'model-btn';
+            div.innerHTML = `<span>${key}</span> <span class="model-tag">Schema</span>`;
+            div.onclick = () => loadModel(key, div);
+            modelList.appendChild(div);
+        });
+
+        // --- CORE LOGIC ---
+        function loadModel(modelName, btnEl) {
+            currentModel = modelName;
+
+            // Highlight sidebar
+            document.querySelectorAll('.model-btn').forEach(b => b.classList.remove('active'));
+            btnEl.classList.add('active');
+
+            // Show form
+            document.getElementById('placeholder').style.display = 'none';
+            document.getElementById('formCard').classList.add('show');
+            document.getElementById('formTitle').innerText = modelName;
+
+            // Generate Fields
+            const schema = SCHEMAS[modelName];
+            const formBody = document.getElementById('formBody');
+            formBody.innerHTML = '';
+            formData = {}; // Reset data
+
+            // Recursively build fields
+            Object.keys(schema.fields).forEach(fieldName => {
+                const fieldDef = schema.fields[fieldName];
+                const el = createFieldElement(fieldName, fieldDef, formData);
+                formBody.appendChild(el);
+            });
+
+            validate();
+        }
+
+        function createFieldElement(fieldName, fieldDef, dataRef) {
+            const container = document.createElement('div');
+            container.className = 'field-group';
+
+            // Label
+            const top = document.createElement('div');
+            top.className = 'label-row';
+            top.innerHTML = `
+                <span class="label-name">${fieldName} ${fieldDef.required ? '<span style="color:#ef4444">*</span>' : ''}</span>
+                <span class="label-type" style="background:${getTypeColor(fieldDef.type)}">${fieldDef.type}</span>
+            `;
+            container.appendChild(top);
+
+            // Input Logic
+            if (fieldDef.type.startsWith("List[")) {
+                // Determine subtype: str or Object?
+                const subType = fieldDef.type.match(/List\[(.*)\]/)[1];
+                dataRef[fieldName] = []; // Initialize array
+
+                const listWrap = document.createElement('div');
+                listWrap.className = 'list-container';
+                listWrap.innerHTML = `
+                    <div class="list-header">
+                        <span>Items (${subType})</span>
+                        <button class="btn-add" type="button"><i class="fa-solid fa-plus"></i> Add Item</button>
+                    </div>
+                    <div class="list-items"></div>
+                `;
+
+                const itemsContainer = listWrap.querySelector('.list-items');
+                const btnAdd = listWrap.querySelector('.btn-add');
+
+                btnAdd.onclick = () => {
+                    const idx = dataRef[fieldName].length;
+                    const itemEl = document.createElement('div');
+                    itemEl.className = 'list-item';
+
+                    if (SCHEMAS[subType]) {
+                        // Nested Object
+                        const subData = {};
+                        dataRef[fieldName].push(subData);
+
+                        const subForm = document.createElement('div');
+                        subForm.className = 'nested-obj';
+                        Object.keys(SCHEMAS[subType].fields).forEach(k => {
+                            subForm.appendChild(createFieldElement(k, SCHEMAS[subType].fields[k], subData));
+                        });
+                        itemEl.appendChild(subForm);
+                    } else {
+                        // Primitive List (List[str])
+                        dataRef[fieldName].push("");
+                        const input = document.createElement('input');
+                        input.type = 'text';
+                        input.placeholder = "Enter value...";
+                        input.oninput = (e) => {
+                            dataRef[fieldName][idx] = e.target.value;
+                            validate();
+                        };
+                        itemEl.appendChild(input);
+                    }
+
+                    // Remove Button
+                    const btnRem = document.createElement('button');
+                    btnRem.className = 'btn-remove';
+                    btnRem.innerHTML = '<i class="fa-solid fa-times"></i>';
+                    btnRem.onclick = () => {
+                        // Simple remove visual (Logic sync is harder in vanilla JS without ID, simplistic approach)
+                        itemEl.remove();
+                        // For full correctness we should redraw, but for demo visual is key
+                        validate();
+                    };
+                    itemEl.appendChild(btnRem);
+                    itemsContainer.appendChild(itemEl);
+                    validate();
+                };
+
+                container.appendChild(listWrap);
+
+            } else {
+                // Primitive Input
+                const input = document.createElement('input');
+                input.type = fieldDef.type.includes('int') ? 'number' : 'text';
+                input.placeholder = fieldDef.default ? `Default: ${fieldDef.default}` : 'Enter value...';
+
+                // Init value
+                dataRef[fieldName] = fieldDef.default || "";
+
+                input.oninput = (e) => {
+                    let val = e.target.value;
+                    if (fieldDef.type.includes('int')) val = parseInt(val) || 0;
+                    dataRef[fieldName] = val;
+                    validate();
+                };
+                container.appendChild(input);
+            }
+
+            return container;
+        }
+
+        // --- VALIDATION & DISPLAY ---
+        function validate() {
+            const output = document.getElementById('jsonOutput');
+            const badge = document.getElementById('validBadge');
+
+            // Highlight Syntax
+            const jsonStr = JSON.stringify(formData, null, 2);
+            output.innerHTML = syntaxHighlight(jsonStr);
+
+            // Simple "Is Empty" check for required fields (Visual simulation only)
+            // In real app, we'd check every nested field
+            let valid = true;
+            // (Mock validation logic here)
+
+            if (valid) {
+                badge.className = 'valid-badge ok';
+                badge.innerHTML = '<i class="fa-solid fa-check-circle"></i> VALIDATED BY PYDANTIC';
+            }
+        }
+
+        function fillExample() {
+            if (!currentModel) return;
+            const ex = SCHEMAS[currentModel].example;
+
+            // Re-render whole form with data (Shortcut for demo)
+            // In a real React/Vue app this is auto. Here we cheat by "alerting" 
+            // the user this is a demo feature or just displaying the JSON.
+            formData = JSON.parse(JSON.stringify(ex)); // Deep copy
+            validate();
+
+            // Visual feedback that form "would" be filled
+            const badge = document.getElementById('validBadge');
+            badge.innerHTML = '<i class="fa-solid fa-magic"></i> EXAMPLE LOADED (JSON VIEW)';
+        }
+
+        // --- UTILS ---
+        function getTypeColor(type) {
+            if (type.includes('List')) return 'var(--type-list)';
+            if (type.includes('int')) return 'var(--type-int)';
+            if (type.includes('str')) return 'var(--type-str)';
+            return 'var(--type-obj)';
+        }
+
+        function syntaxHighlight(json) {
+            json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+                var cls = 'k-num';
+                if (/^"/.test(match)) {
+                    if (/:$/.test(match)) {
+                        cls = 'k-key';
+                    } else {
+                        cls = 'k-str';
+                    }
+                } else if (/true|false/.test(match)) {
+                    cls = 'k-bool';
+                } else if (/null/.test(match)) {
+                    cls = 'k-bool';
+                }
+                return '<span class="' + cls + '">' + match + '</span>';
+            });
+        }
+
+    </script>
+</body>
+
+</html>

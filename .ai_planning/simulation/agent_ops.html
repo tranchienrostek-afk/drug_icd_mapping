@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent Search Ops - Command Center</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@500;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg: #050505;
+            --panel-bg: #0a0f14;
+            --border: #1f2937;
+            --cyan: #00f3ff;
+            --green: #00ff9d;
+            --red: #ff0055;
+            --yellow: #ffd700;
+            --text: #e0e0e0;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Share Tech Mono', monospace;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* HEADER */
+        header {
+            height: 60px;
+            background: rgba(0, 243, 255, 0.05);
+            border-bottom: 1px solid var(--cyan);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.1);
+            z-index: 10;
+        }
+
+        .logo {
+            font-family: 'Rajdhani';
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--cyan);
+            letter-spacing: 2px;
+        }
+
+        .status-bar {
+            display: flex;
+            gap: 20px;
+            font-size: 0.9rem;
+        }
+
+        .badge {
+            padding: 4px 10px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+        }
+
+        .active {
+            color: var(--green);
+            border-color: var(--green);
+            box-shadow: 0 0 10px rgba(0, 255, 157, 0.2);
+        }
+
+        /* MAIN LAYOUT */
+        .main-grid {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 350px 1fr 350px;
+            gap: 10px;
+            padding: 10px;
+            overflow: hidden;
+        }
+
+        /* PANELS */
+        .panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .panel-header {
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid var(--border);
+            font-weight: bold;
+            color: var(--cyan);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* LEFT: BRAIN (LLM LOGS) */
+        .brain-visual {
+            height: 150px;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-bottom: 1px solid var(--border);
+            position: relative;
+        }
+
+        .neural-net {
+            width: 100%;
+            height: 100%;
+            opacity: 0.3;
+        }
+
+        .log-container {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            font-size: 0.8rem;
+            line-height: 1.6;
+            scroll-behavior: smooth;
+        }
+
+        .log-entry {
+            margin-bottom: 10px;
+            border-left: 2px solid transparent;
+            padding-left: 10px;
+            opacity: 0;
+            animation: fadeIn 0.3s forwards;
+        }
+
+        .log-sys {
+            border-color: #555;
+            color: #888;
+        }
+
+        .log-agent {
+            border-color: var(--cyan);
+            color: var(--cyan);
+        }
+
+        .log-action {
+            border-color: var(--yellow);
+            color: var(--yellow);
+        }
+
+        .log-data {
+            border-color: var(--green);
+            color: var(--green);
+        }
+
+        /* CENTER: BROWSER VIEW */
+        .browser-toolbar {
+            padding: 8px;
+            background: #1a1d24;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            border-bottom: 1px solid #333;
+        }
+
+        .url-bar {
+            flex: 1;
+            background: #000;
+            border: 1px solid #444;
+            color: #fff;
+            padding: 5px 10px;
+            font-family: sans-serif;
+            font-size: 0.85rem;
+            border-radius: 4px;
+        }
+
+        .web-view {
+            flex: 1;
+            background: #fff;
+            color: #000;
+            position: relative;
+            overflow: hidden;
+            font-family: sans-serif;
+        }
+
+        /* Fake Website Content */
+        .web-content {
+            padding: 20px;
+            opacity: 0;
+            transition: 0.5s;
+        }
+
+        .search-res {
+            border-bottom: 1px solid #eee;
+            padding: 10px 0;
+        }
+
+        .search-res h3 {
+            color: #1a0dab;
+            margin: 0 0 5px 0;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        .search-res p {
+            margin: 0;
+            color: #545454;
+            font-size: 0.9rem;
+        }
+
+        .detail-page h1 {
+            color: #333;
+        }
+
+        .detail-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .detail-table td {
+            padding: 10px;
+            border: 1px solid #ddd;
+        }
+
+        .detail-table td:first-child {
+            font-weight: bold;
+            background: #f9f9f9;
+            width: 30%;
+        }
+
+        /* MOUSE CURSOR */
+        .cursor {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='black' stroke='white' viewBox='0 0 24 24'%3E%3Cpath d='M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z'/%3E%3C/svg%3E");
+            background-size: cover;
+            pointer-events: none;
+            z-index: 100;
+            transition: all 1s ease-in-out;
+            top: 50%;
+            left: 50%;
+        }
+
+        /* SCANNER EFFECT */
+        .scanner-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: var(--green);
+            box-shadow: 0 0 15px var(--green);
+            display: none;
+            z-index: 50;
+        }
+
+        /* RIGHT: DATA EXTRACTION */
+        .data-grid {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .data-field {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #333;
+            transition: 0.3s;
+        }
+
+        .data-field.extracted {
+            border-color: var(--green);
+            background: rgba(0, 255, 157, 0.1);
+            box-shadow: 0 0 10px rgba(0, 255, 157, 0.2);
+        }
+
+        .field-label {
+            font-size: 0.7rem;
+            color: #888;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .field-val {
+            font-size: 1rem;
+            font-weight: bold;
+            min-height: 20px;
+        }
+
+        /* CONTROLS (BOTTOM) */
+        .control-bar {
+            height: 60px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            background: #000;
+        }
+
+        input {
+            background: #111;
+            border: 1px solid var(--border);
+            color: var(--cyan);
+            padding: 10px;
+            font-family: 'Share Tech Mono';
+            width: 300px;
+        }
+
+        button {
+            background: var(--cyan);
+            color: #000;
+            border: none;
+            padding: 10px 30px;
+            font-weight: bold;
+            cursor: pointer;
+            font-family: 'Rajdhani';
+            font-size: 1.1rem;
+            clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+        }
+
+        button:hover {
+            background: #fff;
+            box-shadow: 0 0 15px var(--cyan);
+        }
+
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes scan {
+            0% {
+                top: 0;
+            }
+
+            100% {
+                top: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div class="logo"><i class="fa-solid fa-robot"></i> AGENT SEARCH OPS</div>
+        <div class="status-bar">
+            <div class="badge active" id="st-llm">LLM: GPT-4o</div>
+            <div class="badge" id="st-browser">BROWSER: IDLE</div>
+            <div class="badge" id="st-round">ROUND: 0/5</div>
+        </div>
+    </header>
+
+    <div class="main-grid">
+
+        <div class="panel">
+            <div class="panel-header">AI REASONING CORE</div>
+            <div class="brain-visual">
+                <canvas id="brainCanvas"></canvas>
+            </div>
+            <div class="log-container" id="sysLog">
+                <div class="log-entry log-sys">System Initialized. Waiting for mission...</div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">HEADLESS BROWSER VIEW (Playwright)</div>
+            <div class="browser-toolbar">
+                <i class="fa-solid fa-arrow-left" style="color:#666"></i>
+                <i class="fa-solid fa-rotate-right" style="color:#666"></i>
+                <div class="url-bar" id="urlBar">about:blank</div>
+            </div>
+            <div class="web-view" id="webView">
+                <div class="cursor" id="virtualMouse"></div>
+                <div class="scanner-line" id="scanner"></div>
+                <div class="web-content" id="webContent">
+                </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">EXTRACTED DATA (JSON)</div>
+            <div class="data-grid">
+                <div class="data-field" id="f-name">
+                    <div class="field-label">Official Name</div>
+                    <div class="field-val">...</div>
+                </div>
+                <div class="data-field" id="f-sdk">
+                    <div class="field-label">SDK (Registration No)</div>
+                    <div class="field-val">...</div>
+                </div>
+                <div class="data-field" id="f-active">
+                    <div class="field-label">Active Ingredient</div>
+                    <div class="field-val">...</div>
+                </div>
+                <div class="data-field" id="f-usage">
+                    <div class="field-label">Usage / Indication</div>
+                    <div class="field-val">...</div>
+                </div>
+                <div class="data-field" id="f-conf">
+                    <div class="field-label">Confidence Score</div>
+                    <div class="field-val" style="color:var(--yellow)">...</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="control-bar">
+        <input type="text" id="drugInput" value="Panadol Extra" placeholder="Enter drug name...">
+        <button onclick="startMission()">INITIATE SEARCH</button>
+    </div>
+
+    <script>
+        // --- CONSTANTS ---
+        const SEARCH_URL = "https://trungtamthuoc.com/search?q=";
+
+        // --- STATE ---
+        let currentRound = 0;
+        const drugData = {
+            "Panadol Extra": {
+                name: "Panadol Extra",
+                sdk: "VN-21683-19",
+                active: "Paracetamol 500mg, Caffeine 65mg",
+                usage: "Điều trị đau nhẹ đến vừa: đau đầu, đau nửa đầu, đau cơ, đau bụng kinh...",
+                url: "https://trungtamthuoc.com/thuoc/panadol-extra"
+            }
+        };
+
+        // --- UTILS ---
+        const wait = ms => new Promise(r => setTimeout(r, ms));
+
+        function log(msg, type = 'sys') {
+            const el = document.getElementById('sysLog');
+            const div = document.createElement('div');
+            div.className = `log-entry log-${type}`;
+            div.innerHTML = `> ${msg}`;
+            el.appendChild(div);
+            el.scrollTop = el.scrollHeight;
+        }
+
+        // --- VISUAL EFFECTS ---
+
+        // Brain Animation (Canvas)
+        const canvas = document.getElementById('brainCanvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        function initBrain() {
+            canvas.width = canvas.parentElement.offsetWidth;
+            canvas.height = canvas.parentElement.offsetHeight;
+            for (let i = 0; i < 30; i++) particles.push({
+                x: Math.random() * canvas.width, y: Math.random() * canvas.height,
+                vx: (Math.random() - 0.5), vy: (Math.random() - 0.5)
+            });
+        }
+
+        function drawBrain() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#00f3ff';
+            ctx.strokeStyle = 'rgba(0, 243, 255, 0.2)';
+
+            particles.forEach(p => {
+                p.x += p.vx; p.y += p.vy;
+                if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+                if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+                ctx.beginPath(); ctx.arc(p.x, p.y, 2, 0, Math.PI * 2); ctx.fill();
+
+                particles.forEach(p2 => {
+                    const d = Math.hypot(p.x - p2.x, p.y - p2.y);
+                    if (d < 60) {
+                        ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+                    }
+                });
+            });
+            requestAnimationFrame(drawBrain);
+        }
+        initBrain(); drawBrain();
+
+        // --- CORE AGENT LOGIC ---
+
+        async function startMission() {
+            const drugName = document.getElementById('drugInput').value;
+            if (!drugName) return;
+
+            // Reset UI
+            document.querySelectorAll('.data-field').forEach(el => el.classList.remove('extracted'));
+            document.querySelectorAll('.field-val').forEach(el => el.innerText = '...');
+            document.getElementById('webContent').style.opacity = 0;
+            document.getElementById('sysLog').innerHTML = '';
+
+            currentRound = 1;
+            updateStatus();
+
+            log(`RECEIVED REQUEST: Find info for "${drugName}"`, "sys");
+            await wait(1000);
+
+            // ROUND 1: SEARCH
+            log(`[Round 1] PLAN: Navigate to search page`, "agent");
+            await performAction('navigate', `${SEARCH_URL}${encodeURIComponent(drugName)}`);
+            await wait(1500);
+
+            // Render Search Results
+            renderSearchResults(drugName);
+            log(`[Round 1] OBSERVATION: Found 5 results. Identifying best match...`, "sys");
+            await wait(1000);
+
+            // ROUND 2: CLICK
+            currentRound = 2; updateStatus();
+            log(`[Round 2] DECISION: Click result #1 "${drugName} (Hộp 15 vỉ)"`, "action");
+            await moveMouseTo(50, 50); // Move to first result
+            await performAction('navigate', drugData[drugName]?.url || "https://fake.url");
+
+            // Render Detail Page
+            renderDetailPage(drugName);
+            await wait(1500);
+
+            // ROUND 3: EXTRACT
+            currentRound = 3; updateStatus();
+            log(`[Round 3] OBSERVATION: Detail page loaded. Content available.`, "sys");
+            log(`[Round 3] ACTION: Scanning DOM for entities...`, "action");
+
+            await runScanner();
+
+            // Extract Data
+            extractField('f-name', drugData[drugName]?.name || drugName);
+            await wait(500);
+            extractField('f-sdk', drugData[drugName]?.sdk || "N/A");
+            await wait(500);
+            extractField('f-active', drugData[drugName]?.active || "N/A");
+            await wait(500);
+            extractField('f-usage', drugData[drugName]?.usage || "See details");
+
+            // FINISH
+            log(`[Round 3] SUCCESS: Data extraction complete. Confidence: 0.95`, "data");
+            document.getElementById('f-conf').querySelector('.field-val').innerText = "0.95";
+            document.getElementById('st-browser').innerText = "BROWSER: DONE";
+            document.getElementById('st-browser').className = "badge active";
+        }
+
+        async function performAction(type, url) {
+            if (type === 'navigate') {
+                document.getElementById('st-browser').innerText = "BROWSER: NAVIGATING...";
+                document.getElementById('st-browser').className = "badge active";
+                document.getElementById('urlBar').value = url;
+                await wait(800); // Network latency
+                document.getElementById('st-browser').innerText = "BROWSER: LOADED";
+                document.getElementById('st-browser').className = "badge";
+            }
+        }
+
+        async function moveMouseTo(xPercent, yPercent) {
+            const mouse = document.getElementById('virtualMouse');
+            const view = document.getElementById('webView');
+            const x = (view.offsetWidth * xPercent) / 100;
+            const y = (view.offsetHeight * yPercent) / 100;
+
+            mouse.style.left = x + 'px';
+            mouse.style.top = y + 'px';
+            await wait(1000);
+
+            // Click effect
+            mouse.style.transform = "scale(0.8)";
+            await wait(200);
+            mouse.style.transform = "scale(1)";
+        }
+
+        async function runScanner() {
+            const scan = document.getElementById('scanner');
+            scan.style.display = 'block';
+            scan.style.animation = 'scan 2s linear';
+            await wait(2000);
+            scan.style.display = 'none';
+            scan.style.animation = 'none';
+        }
+
+        function extractField(id, val) {
+            const el = document.getElementById(id);
+            el.querySelector('.field-val').innerText = val;
+            el.classList.add('extracted');
+        }
+
+        function renderSearchResults(query) {
+            const content = document.getElementById('webContent');
+            content.style.opacity = 0;
+            setTimeout(() => {
+                content.innerHTML = `
+                    <div style="color:#555; font-size:0.8rem; margin-bottom:15px">About 1,200 results (0.42 seconds)</div>
+                    <div class="search-res">
+                        <h3>${query} (Hộp 15 vỉ x 12 viên) - Chính hãng</h3>
+                        <p style="color:green; font-size:0.8rem">trungtamthuoc.com › thuoc › panadol-extra</p>
+                        <p>${query} chứa Paracetamol và Cafein giúp giảm đau mạnh, hạ sốt...</p>
+                    </div>
+                    <div class="search-res">
+                        <h3>${query} - Liều dùng, cách dùng, giá bao nhiêu?</h3>
+                        <p>Thông tin chi tiết về thuốc ${query}...</p>
+                    </div>
+                `;
+                content.style.opacity = 1;
+            }, 300);
+        }
+
+        function renderDetailPage(name) {
+            const content = document.getElementById('webContent');
+            content.style.opacity = 0;
+            const data = drugData[name] || { sdk: "Unknown", active: "Unknown" };
+
+            setTimeout(() => {
+                content.innerHTML = `
+                    <div class="detail-page">
+                        <h1>${name}</h1>
+                        <div style="color:orange; font-weight:bold; margin:10px 0">★★★★★ 150 đánh giá</div>
+                        <p>Thuốc giảm đau hạ sốt không kê đơn.</p>
+                        
+                        <table class="detail-table">
+                            <tr><td>Số đăng ký</td><td>${data.sdk}</td></tr>
+                            <tr><td>Hoạt chất</td><td>${data.active}</td></tr>
+                            <tr><td>Dạng bào chế</td><td>Viên nén bao phim</td></tr>
+                            <tr><td>Quy cách</td><td>Hộp 15 vỉ x 12 viên</td></tr>
+                            <tr><td>Chỉ định</td><td>${data.usage}</td></tr>
+                        </table>
+                    </div>
+                `;
+                content.style.opacity = 1;
+            }, 300);
+        }
+
+        function updateStatus() {
+            document.getElementById('st-round').innerText = `ROUND: ${currentRound}/5`;
+        }
+
+    </script>
+</body>
+
+</html>
