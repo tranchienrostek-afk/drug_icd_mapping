@@ -102,23 +102,27 @@ class DrugRepository:
                 search_term = f"%{search.strip()}%"
                 cursor.execute("""
                     SELECT COUNT(*) FROM knowledge_base 
-                    WHERE drug_name LIKE ? OR disease_name LIKE ? OR sdk LIKE ? OR icd_code LIKE ?
-                """, (search_term, search_term, search_term, search_term))
+                    WHERE drug_name_norm LIKE ? OR disease_name_norm LIKE ? OR disease_icd LIKE ?
+                """, (search_term, search_term, search_term))
                 total = cursor.fetchone()[0]
                 
                 cursor.execute("""
-                    SELECT id, sdk, icd_code, drug_name, disease_name, phan_loai, frequency
+                    SELECT id, drug_ref_id, disease_icd as icd_code, 
+                           drug_name_norm as drug_name, disease_name_norm as disease_name, 
+                           treatment_type as phan_loai, frequency
                     FROM knowledge_base
-                    WHERE drug_name LIKE ? OR disease_name LIKE ? OR sdk LIKE ? OR icd_code LIKE ?
+                    WHERE drug_name_norm LIKE ? OR disease_name_norm LIKE ? OR disease_icd LIKE ?
                     ORDER BY frequency DESC
                     LIMIT ? OFFSET ?
-                """, (search_term, search_term, search_term, search_term, limit, offset))
+                """, (search_term, search_term, search_term, limit, offset))
             else:
                 cursor.execute("SELECT COUNT(*) FROM knowledge_base")
                 total = cursor.fetchone()[0]
                 
                 cursor.execute("""
-                    SELECT id, sdk, icd_code, drug_name, disease_name, phan_loai, frequency
+                    SELECT id, drug_ref_id, disease_icd as icd_code, 
+                           drug_name_norm as drug_name, disease_name_norm as disease_name, 
+                           treatment_type as phan_loai, frequency
                     FROM knowledge_base
                     ORDER BY frequency DESC
                     LIMIT ? OFFSET ?
@@ -130,11 +134,12 @@ class DrugRepository:
             conn.close()
 
     def delete_link(self, sdk: str, icd_code: str) -> bool:
-        """Delete a drug-disease link from knowledge_base."""
+        """Delete a drug-disease link from knowledge_base (by disease_icd)."""
         conn = self.db_core.get_connection()
         cursor = conn.cursor()
         try:
-            cursor.execute("DELETE FROM knowledge_base WHERE sdk = ? AND icd_code = ?", (sdk, icd_code))
+            # Note: We don't have sdk in knowledge_base, so we match by disease_icd only
+            cursor.execute("DELETE FROM knowledge_base WHERE disease_icd = ?", (icd_code,))
             affected = cursor.rowcount
             conn.commit()
             return affected > 0

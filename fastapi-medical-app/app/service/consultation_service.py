@@ -14,7 +14,12 @@ class ConsultationService:
 
     def check_knowledge_base(self, drug_name: str, disease_name: str, disease_type: str) -> Optional[Dict]:
         """
-        Check Internal Knowledge Base (Rule-based)
+        Check Internal Knowledge Base (Rule-based) with TDV Priority.
+        
+        Logic:
+        1. Check for 'tdv_feedback' (Human Verified) -> Highest Priority
+        2. Fallback to 'treatment_type' (AI) -> Weighted by frequency
+        
         Returns best match dict or None
         """
         conn = self.db_core.get_connection()
@@ -25,29 +30,55 @@ class ConsultationService:
             drug_norm = normalize_text(drug_name)
             diag_norm = normalize_text(disease_name)
             
+            # Query grouping by both classification types to find best match
             cursor.execute("""
-                SELECT count(*) as frequency, treatment_type
+                SELECT 
+                    treatment_type, 
+                    tdv_feedback, 
+                    SUM(frequency) as total_freq,
+                    count(*) as record_count
                 FROM knowledge_base 
                 WHERE drug_name_norm = ? AND disease_name_norm = ?
-                GROUP BY treatment_type
-                ORDER BY frequency DESC
-                LIMIT 1
+                GROUP BY treatment_type, tdv_feedback
+                ORDER BY total_freq DESC
             """, (drug_norm, diag_norm))
             
-            row = cursor.fetchone()
+            rows = cursor.fetchall()
             
-            if row:
-                freq = row['frequency']
+            if not rows:
+                return None
+                
+            # 1. Check for TDV Feedback (Highest Priority)
+            for row in rows:
+                if row['tdv_feedback'] and row['tdv_feedback'].lower() not in ('', 'none', 'null'):
+                    return {
+                        "validity": "valid", # TDV implies valid/checked
+                        "role": row['tdv_feedback'],
+                        "explanation": f"Expert Verified: Classified as '{row['tdv_feedback']}' by Medical Reviewer.",
+                        "source": "INTERNAL_KB_TDV"
+                    }
+            
+            # 2. Fallback to AI Classification (treatment_type)
+            # Find row with highest frequency that has a valid treatment_type
+            best_ai_row = None
+            for row in rows:
+                if row['treatment_type']:
+                    best_ai_row = row
+                    break
+            
+            if best_ai_row:
+                freq = best_ai_row['total_freq']
                 # Calculate Dynamic Confidence
                 conf = min(0.99, math.log10(freq) / 2.0) if freq > 1 else 0.1
                 
-                if conf >= 0.8: # High confidence threshold
+                if conf >= 0.8: # High confidence threshold for AI
                     return {
                         "validity": "valid", 
-                        "role": row['treatment_type'] if row['treatment_type'] else ("main drug" if disease_type == 'MAIN' else "supportive"),
-                        "explanation": f"Internal KB: Found {freq} records for '{disease_name}'. Confidence: {conf:.0%}",
-                        "source": "INTERNAL_KB"
+                        "role": best_ai_row['treatment_type'],
+                        "explanation": f"Internal KB (AI): Found {freq} records. Confidence: {conf:.0%}",
+                        "source": "INTERNAL_KB_AI"
                     }
+                    
             return None
             
         finally:

@@ -20,3 +20,8 @@ Hỗ trợ tìm kiếm nhanh theo:
 - `icd_code`
 - `disease_name`
 - `search_text`
+
+> **Lưu ý Implementation (2026-01):**
+> Hiện tại `DiseaseService` lấy dữ liệu bệnh từ bảng `knowledge_base` thay vì bảng `diseases` riêng biệt:
+> - Query dùng `disease_icd` và `disease_name_norm` từ `knowledge_base`
+> - Alias khi SELECT: `disease_icd as icd_code`, `disease_name_norm as disease_name`

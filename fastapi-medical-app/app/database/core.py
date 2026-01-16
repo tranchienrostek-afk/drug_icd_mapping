@@ -100,23 +100,48 @@ class DatabaseCore:
                 )
             """)
 
-            # 7. Knowledge Base
+
+            # 7. Knowledge Base (Updated Schema v2.1)
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS knowledge_base (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    
+                    -- Drug Info
+                    drug_name TEXT,
                     drug_name_norm TEXT,
-                    disease_name_norm TEXT,
-                    raw_drug_name TEXT,
-                    raw_disease_name TEXT,
-                    treatment_type TEXT, 
+                    drug_ref_id INTEGER,
+                    
+                    -- Primary Disease
                     disease_icd TEXT,
-                    source_id TEXT, 
-                    confidence_score REAL DEFAULT 1.0,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    disease_name TEXT,
+                    disease_name_norm TEXT,
+                    disease_ref_id INTEGER,
+                    
+                    -- Secondary Disease
+                    secondary_disease_icd TEXT,
+                    secondary_disease_name TEXT,
+                    secondary_disease_name_norm TEXT,
+                    secondary_disease_ref_id INTEGER,
+                    
+                    -- Classification & Info
+                    treatment_type TEXT,                -- AI Classification (Phân loại)
+                    tdv_feedback TEXT,                  -- TDV Feedback
+                    symptom TEXT,
+                    prescription_reason TEXT,
+                    
+                    -- Metadata
+                    frequency INTEGER DEFAULT 1,
+                    confidence_score REAL DEFAULT 0.0,
+                    batch_id TEXT,
+                    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_kb_lookup ON knowledge_base(drug_name_norm, disease_name_norm)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_kb_type ON knowledge_base(treatment_type)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_kb_icd ON knowledge_base(disease_icd)")
+            
+            # 8. Migrate Knowledge Base (Ensure columns exist)
+            self._migrate_kb_table(cursor)
                 
             conn.commit()
         except sqlite3.Error as e:
@@ -241,3 +266,37 @@ class DatabaseCore:
                     cursor.execute(f"ALTER TABLE drug_disease_links ADD COLUMN {col} {dtype}")
                 except Exception:
                     pass
+
+    def _migrate_kb_table(self, cursor):
+        """
+        Ensure knowledge_base has all required columns (v2.1).
+        """
+        cursor.execute("PRAGMA table_info(knowledge_base)")
+        existing_cols = {row['name'] for row in cursor.fetchall()}
+        
+        # Define new columns to add
+        new_columns = [
+            ("drug_name", "TEXT"),
+            ("drug_name_norm", "TEXT"),
+            ("drug_ref_id", "INTEGER"),
+            ("disease_icd", "TEXT"),
+            ("disease_name", "TEXT"),
+            ("disease_name_norm", "TEXT"),
+            ("disease_ref_id", "INTEGER"),
+            ("secondary_disease_icd", "TEXT"),
+            ("secondary_disease_name", "TEXT"),
+            ("secondary_disease_name_norm", "TEXT"),
+            ("secondary_disease_ref_id", "INTEGER"),
+            ("tdv_feedback", "TEXT"),
+            ("symptom", "TEXT"),
+            ("prescription_reason", "TEXT"),
+            ("batch_id", "TEXT"),
+        ]
+        
+        for col_name, col_type in new_columns:
+            if col_name not in existing_cols:
+                try:
+                    cursor.execute(f"ALTER TABLE knowledge_base ADD COLUMN {col_name} {col_type}")
+                    print(f"[Migration] Added column {col_name} to knowledge_base")
+                except Exception as e:
+                    print(f"[Migration Warning] Column {col_name} may already exist: {e}")

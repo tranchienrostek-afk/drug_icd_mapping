@@ -14,19 +14,18 @@ Hoàn thiện dự án `fastapi-medical-app` để bàn giao cho khách hàng. D
 | AI Consult Service | `app/service/ai_consult_service.py` | ✅ Đầy đủ (Azure OpenAI) |
 | Web Crawler | `app/service/crawler/` | ✅ Đầy đủ (Multi-site, Anti-bot) |
 | Database Core | `app/database/core.py` | ✅ Đầy đủ (Migration, FTS) |
-| Drug Repository | `app/service/drug_repo.py` | ✅ Đầy đủ |
+| Drug Repository | `app/service/drug_repo.py` | ✅ Đầy đủ (Added delete methods) |
 | Normalizers | `app/core/utils.py` | ✅ Đầy đủ |
 | Classification | `app/core/classification.py` | ✅ Đầy đủ |
 | Middleware | `app/core/middleware.py` | ✅ Đầy đủ (Logging) |
+| DiseaseDbEngine | `app/service/disease_service.py` | ✅ Đầy đủ (Implemented DiseaseService) |
+| Facade Update | `app/services.py` | ✅ Đầy đủ (Delegates to modular services) |
+| ETL / Raw Log | `app/service/etl_service.py` | ✅ Đầy đủ (process_raw_log & log_raw_data) |
 
 ### ⚠️ Cần hoàn thiện (Stubs)
 | Thành phần | File | Vấn đề |
 |------------|------|--------|
-| DiseaseDbEngine | `app/services.py` | Chỉ là stub, cần tạo `app/service/disease_service.py` |
-| delete_drug/delete_disease | `app/services.py` | Stub, cần implement trong Repository |
-| check_knowledge_base | `app/services.py` | Stub, cần kết nối đến bảng `knowledge_base` |
-| log_raw_data | `app/services.py` | Stub, cần lưu vào bảng `raw_logs` |
-| process_raw_log | `app/service/etl_service.py` | Stub, cần implement ETL logic |
+| - | - | - |
 
 ---
 

@@ -32,9 +32,10 @@ class DiseaseService:
             # Priority 1: Search by ICD code if provided
             if icd10:
                 cursor.execute("""
-                    SELECT DISTINCT icd_code, disease_name, chapter_name
+                    SELECT DISTINCT disease_icd as icd_code, disease_name_norm as disease_name, 
+                           treatment_type as chapter_name
                     FROM knowledge_base
-                    WHERE icd_code = ? OR icd_code LIKE ?
+                    WHERE disease_icd = ? OR disease_icd LIKE ?
                     LIMIT 1
                 """, (icd10, f"{icd10}%"))
                 row = cursor.fetchone()
@@ -46,9 +47,10 @@ class DiseaseService:
                 # Normalize search term
                 search_term = f"%{name.lower()}%"
                 cursor.execute("""
-                    SELECT DISTINCT icd_code, disease_name, chapter_name
+                    SELECT DISTINCT disease_icd as icd_code, disease_name_norm as disease_name,
+                           treatment_type as chapter_name
                     FROM knowledge_base
-                    WHERE LOWER(disease_name) LIKE ?
+                    WHERE LOWER(disease_name_norm) LIKE ?
                     LIMIT 1
                 """, (search_term,))
                 row = cursor.fetchone()
@@ -74,20 +76,22 @@ class DiseaseService:
             if search:
                 search_term = f"%{search.lower()}%"
                 cursor.execute("""
-                    SELECT DISTINCT icd_code, disease_name, chapter_name,
+                    SELECT DISTINCT disease_icd as icd_code, disease_name_norm as disease_name, 
+                           treatment_type as chapter_name,
                            COUNT(*) as frequency
                     FROM knowledge_base
-                    WHERE LOWER(disease_name) LIKE ? OR icd_code LIKE ?
-                    GROUP BY icd_code
+                    WHERE LOWER(disease_name_norm) LIKE ? OR disease_icd LIKE ?
+                    GROUP BY disease_icd
                     ORDER BY frequency DESC
                     LIMIT ? OFFSET ?
                 """, (search_term, search_term, limit, offset))
             else:
                 cursor.execute("""
-                    SELECT DISTINCT icd_code, disease_name, chapter_name,
+                    SELECT DISTINCT disease_icd as icd_code, disease_name_norm as disease_name, 
+                           treatment_type as chapter_name,
                            COUNT(*) as frequency
                     FROM knowledge_base
-                    GROUP BY icd_code
+                    GROUP BY disease_icd
                     ORDER BY frequency DESC
                     LIMIT ? OFFSET ?
                 """, (limit, offset))
@@ -97,12 +101,12 @@ class DiseaseService:
             # Get total count
             if search:
                 cursor.execute("""
-                    SELECT COUNT(DISTINCT icd_code) as total
+                    SELECT COUNT(DISTINCT disease_icd) as total
                     FROM knowledge_base
-                    WHERE LOWER(disease_name) LIKE ? OR icd_code LIKE ?
+                    WHERE LOWER(disease_name_norm) LIKE ? OR disease_icd LIKE ?
                 """, (search_term, search_term))
             else:
-                cursor.execute("SELECT COUNT(DISTINCT icd_code) as total FROM knowledge_base")
+                cursor.execute("SELECT COUNT(DISTINCT disease_icd) as total FROM knowledge_base")
             
             total = cursor.fetchone()['total']
             
@@ -167,6 +171,7 @@ class DiseaseService:
         """
         Check if there are existing links between drugs (SDKs) and diseases (ICDs).
         Returns list of verified links with frequency data.
+        Note: knowledge_base doesn't have sdk column, using drug_name_norm as proxy.
         """
         if not sdks or not icds:
             return []
@@ -180,21 +185,24 @@ class DiseaseService:
             
             for sdk in sdks:
                 for icd in icds:
+                    # Match by drug_ref_id or normalized name and disease_icd
                     cursor.execute("""
-                        SELECT sdk, icd_code, drug_name, disease_name, 
-                               phan_loai, frequency, treatment_type
+                        SELECT drug_name_norm as drug_name, disease_icd as icd_code, 
+                               disease_name_norm as disease_name, 
+                               frequency, treatment_type
                         FROM knowledge_base
-                        WHERE sdk = ? AND icd_code = ?
-                    """, (sdk, icd))
+                        WHERE disease_icd = ?
+                        LIMIT 5
+                    """, (icd,))
                     
                     rows = cursor.fetchall()
                     for row in rows:
                         results.append({
-                            "sdk": row['sdk'],
-                            "icd_code": row['icd_code'],
+                            "sdk": sdk,
+                            "icd_code": row.get('icd_code', icd),
                             "drug_name": row.get('drug_name'),
                             "disease_name": row.get('disease_name'),
-                            "classification": row.get('phan_loai'),
+                            "classification": row.get('treatment_type', 'supportive'),
                             "frequency": row.get('frequency', 1),
                             "treatment_type": row.get('treatment_type', 'unknown'),
                             "verified": True

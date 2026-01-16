@@ -22,40 +22,76 @@ Lưu trữ các liên kết cứng (Explicit Links) giữa Thuốc và Bệnh.
 ## 2. Bảng `knowledge_base`
 Role: **Raw Interaction Store & Crowd Intelligence Source**
 
-Thay vì lưu trữ dữ liệu đã gộp (aggregated), bảng này lưu trữ **mọi tương tác thô** (Raw Interactions) hợp lệ từ các nguồn dữ liệu (CSV Logs từ bệnh viện).
-Điều này cho phép hệ thống thực hiện chiến lược **"Vote & Promote"**:
-- Mỗi bản ghi là một "phiếu bầu" (Vote) của một bác sĩ/thẩm định viên cho cách phân loại thuốc-bệnh đó.
-- Khi truy vấn (Consult), hệ thống sẽ đếm phiếu (Count) và trả về kết quả được bầu chọn nhiều nhất.
+Lưu trữ **mọi tương tác thô** từ các nguồn dữ liệu (CSV Logs từ bệnh viện) để thực hiện chiến lược **"Vote & Promote"**.
 
-### Schema Chi Tiết
+### Schema Chi Tiết (v2.1 - Updated 2026-01-16)
 
 | Cột | Kiểu dữ liệu | Mô tả |
 | :--- | :--- | :--- |
 | `id` | INTEGER | Khóa chính tự tăng |
-| `drug_name_norm` | TEXT | Tên thuốc đã chuẩn hóa (Dùng để tìm kiếm/nhóm). Ví dụ: "panadol" |
-| `disease_name_norm`| TEXT | Tên bệnh đã chuẩn hóa (Dùng để tìm kiếm/nhóm). Ví dụ: "viêm mũi họng" |
-| `raw_drug_name` | TEXT | Tên thuốc nguyên bản từ nguồn (vd: "Panadol Extra 500mg"). Giúp audit. |
-| `raw_disease_name` | TEXT | Tên bệnh nguyên bản từ nguồn (vd: "Viêm họng cấp J02"). Giúp audit. |
-| `treatment_type` | TEXT | Phân loại điều trị (The "Vote"). **Standard Values** (match `group_definitions.md`): `valid` (Thuốc chính), `secondary drug`, `medical supplies`, `supplement`, `cosmeceuticals`, `medical equipment`, `invalid`. |
-| `disease_icd` | TEXT | Mã ICD tham chiếu từ nguồn (nếu có). |
-| `source_id` | TEXT | Định danh nguồn dữ liệu (vd: `batch_id` từ lần import CSV). |
-| `confidence_score` | REAL | Trọng số của nguồn dữ liệu này (Mặc định: 1.0). Có thể dùng để ưu tiên nguồn uy tín hơn. |
-| `created_at` | TIMESTAMP | Thời điểm bản ghi được tạo. |
+| **Drug Info** | | |
+| `drug_name` | TEXT | Tên thuốc gốc từ CSV |
+| `drug_name_norm` | TEXT | Tên thuốc chuẩn hóa (lowercase, bỏ dấu) |
+| `drug_ref_id` | INTEGER | FK → `drugs.id` (nếu match được) |
+| **Primary Disease (Bệnh chính)** | | |
+| `disease_icd` | TEXT | Mã ICD bệnh chính (lowercase) |
+| `disease_name` | TEXT | Tên bệnh chính gốc |
+| `disease_name_norm` | TEXT | Tên bệnh chính chuẩn hóa |
+| `disease_ref_id` | INTEGER | FK → `diseases.id` |
+| **Secondary Disease (Bệnh phụ)** | | |
+| `secondary_disease_icd` | TEXT | Mã ICD bệnh phụ |
+| `secondary_disease_name` | TEXT | Tên bệnh phụ gốc |
+| `secondary_disease_name_norm` | TEXT | Tên bệnh phụ chuẩn hóa |
+| `secondary_disease_ref_id` | INTEGER | FK → `diseases.id` |
+| **Classification** | | |
+| `treatment_type` | TEXT | Phân loại từ AI (e.g. `drug, main`) |
+| `tdv_feedback` | TEXT | Feedback từ TDV (e.g. `drug`) |
+| `symptom` | TEXT | Chẩn đoán ra viện (giữ nguyên) |
+| `prescription_reason` | TEXT | Lý do kê đơn |
+| **Metadata** | | |
+| `frequency` | INTEGER | Số lần xuất hiện (Vote Count). Mặc định: 1 |
+| `confidence_score` | REAL | Điểm tin cậy. Mặc định: 0.0 |
+| `batch_id` | TEXT | ID của batch CSV import |
+| `last_updated` | TIMESTAMP | Thời điểm cập nhật cuối |
+
+### Classification Columns
+
+Thay vì gộp chung, giờ đây hệ thống lưu 2 cột riêng biệt:
+- **`treatment_type`**: Input từ cột **Phân loại** (AI Classification)
+- **`tdv_feedback`**: Input từ cột **Feedback** (Chuyên gia thẩm định)
 
 ### Các Index Quan Trọng
-1.  `idx_kb_lookup(drug_name_norm, disease_name_norm)`: Index cốt lõi phục vụ truy vấn Consult.
-2.  `idx_kb_type(treatment_type)`: Hỗ trợ thống kê, báo cáo theo loại điều trị.
 
-## 3. Logic "Vote & Promote"
+```sql
+CREATE INDEX idx_kb_lookup ON knowledge_base(drug_name_norm, disease_name_norm);
+CREATE INDEX idx_kb_type ON knowledge_base(treatment_type);
+CREATE INDEX idx_kb_icd ON knowledge_base(disease_icd);
+```
+
+## 3. CSV Import Mapping
+
+| Cột CSV | Xử lý | Cột DB |
+|---------|-------|--------|
+| Tên thuốc | Lưu gốc + normalize | `drug_name`, `drug_name_norm` |
+| Mã ICD (Chính) | Parse "CODE - Name" | `disease_icd`, `disease_name`, `disease_name_norm` |
+| Bệnh phụ | Parse "CODE - Name" | `secondary_disease_*` |
+| Chẩn đoán ra viện | Giữ nguyên | `symptom` |
+| Phân loại | Giữ nguyên | `treatment_type` (AI) |
+| Feedback | Giữ nguyên | `tdv_feedback` (TDV) |
+| Lý do kê đơn | Giữ nguyên | `prescription_reason` |
+| Cách dùng | ⏭️ Bỏ qua | - |
+| SL | ⏭️ Bỏ qua | - |
+
+## 4. Logic "Vote & Promote"
+
 Quy trình xác định phân loại cho cặp `(Thuốc A, Bệnh B)`:
 
-1.  **Query**: `SELECT treatment_type, COUNT(*) as vote_count FROM knowledge_base WHERE drug_name_norm = ? AND disease_name_norm = ? GROUP BY treatment_type`
-2.  **Decision**: Chọn `treatment_type` có `vote_count` cao nhất.
-3.  **Confidence**: `Score = vote_count / total_votes`.
+1. **Query**: `SELECT treatment_type, tdv_feedback, COUNT(*) as vote_count FROM knowledge_base WHERE drug_name_norm = ? AND disease_icd = ? GROUP BY treatment_type, tdv_feedback`
+2. **Decision**: Ưu tiên theo `tdv_feedback` nếu có, sau đó đến `treatment_type` có vote cao nhất.
 
-Ví dụ:
-- 90 votes: `valid`
-- 5 votes: `secondary drug`
-- 2 votes: `supplement`
-=> Kết luận: Link này là **valid** (Thuốc chính) (Confidence ~92%).
+## Changelog
 
+| Date | Version | Change |
+|------|---------|--------|
+| 2026-01-16 | 2.0.0 | Thêm: `drug_name`, `secondary_disease_*`, `symptom`, `prescription_reason`. Format mới cho `treatment_type`. |
+| 2026-01-15 | 1.0.0 | Initial schema |

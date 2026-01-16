@@ -139,16 +139,100 @@ class DrugDbEngine:
     def delete_link(self, sdk, icd_code):
         return self.repo.delete_link(sdk, icd_code)
     
-    def log_raw_data(self, batch_id, content, source):
-        # Log to console and could write to a raw_logs table if needed
-        print(f"[LogRawData] batch_id={batch_id}, source={source}, len={len(content)}")
-        # TODO: Persist to raw_logs table if required
-        pass
+    async def log_raw_data(self, batch_id: str, content: str, source: str = "api"):
+        """
+        Log raw data to the database for audit/replay purposes.
+        """
+        try:
+            conn = self.db_core.get_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO raw_logs (batch_id, raw_content, source_ip, created_at)
+                VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+            """, (batch_id, content, source))
+            conn.commit()
+            conn.close()
+            print(f"[LogRawData] Saved batch {batch_id} to DB")
+            return True
+        except Exception as e:
+            print(f"[LogRawData] Error saving batch {batch_id}: {e}")
+            return False
     
     def check_knowledge_base(self, sdks, icds):
         # Delegate to DiseaseService
         disease_service = DiseaseService(self.db_core)
         return disease_service.check_knowledge_base(sdks, icds)
+    
+    def link_drug_disease(self, data: dict) -> dict:
+        """
+        Create a link between a drug and a disease in drug_disease_links table.
+        
+        Args:
+            data: dict with keys:
+                - drug_name: str (required)
+                - disease_name: str (required)
+                - sdk: str (optional)
+                - icd_code: str (optional)
+                - treatment_note: str (optional)
+                - is_verified: int (optional, default 0)
+                - coverage_type: str (optional)
+                - created_by: str (optional, default 'system')
+                - status: str (optional, default 'active')
+        
+        Returns:
+            dict with status and message
+        """
+        try:
+            conn = self.db_core.get_connection()
+            cursor = conn.cursor()
+            
+            # Extract data with defaults
+            drug_name = data.get('drug_name', '')
+            disease_name = data.get('disease_name', '')
+            sdk = data.get('sdk', '')
+            icd_code = data.get('icd_code', '')
+            treatment_note = data.get('treatment_note', '')
+            is_verified = data.get('is_verified', 0)
+            coverage_type = data.get('coverage_type', '')
+            created_by = data.get('created_by', 'system')
+            status = data.get('status', 'active')
+            
+            if not drug_name or not disease_name:
+                return {"status": "error", "message": "drug_name and disease_name are required"}
+            
+            # Check if link already exists
+            cursor.execute("""
+                SELECT id FROM drug_disease_links 
+                WHERE sdk = ? AND icd_code = ?
+            """, (sdk, icd_code))
+            
+            existing = cursor.fetchone()
+            
+            if existing:
+                # Update existing link
+                cursor.execute("""
+                    UPDATE drug_disease_links 
+                    SET treatment_note = ?, is_verified = ?, coverage_type = ?, status = ?
+                    WHERE id = ?
+                """, (treatment_note, is_verified, coverage_type, status, existing['id']))
+                conn.commit()
+                conn.close()
+                return {"status": "updated", "message": f"Link updated: {sdk} <-> {icd_code}", "id": existing['id']}
+            else:
+                # Insert new link
+                cursor.execute("""
+                    INSERT INTO drug_disease_links 
+                    (sdk, icd_code, treatment_note, is_verified, coverage_type, created_by, status, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                """, (sdk, icd_code, treatment_note, is_verified, coverage_type, created_by, status))
+                
+                new_id = cursor.lastrowid
+                conn.commit()
+                conn.close()
+                return {"status": "created", "message": f"Link created: {sdk} <-> {icd_code}", "id": new_id}
+                
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
 
 
 # --- DISEASE DB ENGINE (Wrapper around DiseaseService) ---

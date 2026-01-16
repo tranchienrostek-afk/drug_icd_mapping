@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📋 API Test Guide - Medical API System</title>
+    <style>
+        :root {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-card: #334155;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent-blue: #3b82f6;
+            --accent-green: #22c55e;
+            --accent-yellow: #eab308;
+            --accent-red: #ef4444;
+            --accent-purple: #a855f7;
+            --border-color: #475569;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding: 2rem;
+            background: linear-gradient(135deg, var(--bg-secondary), var(--bg-card));
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        header p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        .stats-bar {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-top: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            background: var(--bg-primary);
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--accent-blue);
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .section {
+            margin-bottom: 3rem;
+        }
+
+        .section-title {
+            font-size: 1.8rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--accent-blue);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .api-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .api-card {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .api-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .api-card-header {
+            padding: 1rem 1.5rem;
+            background: var(--bg-card);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .api-method {
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.75rem;
+        }
+
+        .method-get { background: var(--accent-green); color: #000; }
+        .method-post { background: var(--accent-blue); color: #fff; }
+        .method-put { background: var(--accent-yellow); color: #000; }
+        .method-delete { background: var(--accent-red); color: #fff; }
+
+        .api-endpoint {
+            font-family: 'Consolas', monospace;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+        }
+
+        .api-card-body {
+            padding: 1.5rem;
+        }
+
+        .api-description {
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+        }
+
+        .input-section, .output-section {
+            margin-bottom: 1rem;
+        }
+
+        .section-label {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--accent-purple);
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .code-block {
+            background: var(--bg-primary);
+            padding: 1rem;
+            border-radius: 8px;
+            font-family: 'Consolas', monospace;
+            font-size: 0.85rem;
+            overflow-x: auto;
+            border: 1px solid var(--border-color);
+            position: relative;
+        }
+
+        .code-block pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background: var(--accent-blue);
+            color: #fff;
+            border: none;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.75rem;
+        }
+
+        .copy-btn:hover {
+            background: #2563eb;
+        }
+
+        .test-notes {
+            background: linear-gradient(135deg, #1e3a5f, #1e293b);
+            border-left: 4px solid var(--accent-blue);
+            padding: 1rem;
+            border-radius: 0 8px 8px 0;
+            margin-top: 1rem;
+        }
+
+        .test-notes h4 {
+            color: var(--accent-blue);
+            margin-bottom: 0.5rem;
+        }
+
+        .test-notes ul {
+            margin-left: 1.5rem;
+            color: var(--text-secondary);
+        }
+
+        .test-notes li {
+            margin-bottom: 0.25rem;
+        }
+
+        .warning-box {
+            background: linear-gradient(135deg, #5f3a1e, #3b2914);
+            border-left: 4px solid var(--accent-yellow);
+            padding: 1rem;
+            border-radius: 0 8px 8px 0;
+            margin: 1rem 0;
+        }
+
+        .warning-box h4 {
+            color: var(--accent-yellow);
+            margin-bottom: 0.5rem;
+        }
+
+        .success-box {
+            background: linear-gradient(135deg, #1e5f3a, #14293b);
+            border-left: 4px solid var(--accent-green);
+            padding: 1rem;
+            border-radius: 0 8px 8px 0;
+            margin: 1rem 0;
+        }
+
+        .success-box h4 {
+            color: var(--accent-green);
+            margin-bottom: 0.5rem;
+        }
+
+        .run-test-section {
+            background: var(--bg-secondary);
+            padding: 2rem;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            margin-top: 2rem;
+        }
+
+        .run-test-section h2 {
+            margin-bottom: 1rem;
+            color: var(--accent-green);
+        }
+
+        .command-box {
+            background: #000;
+            padding: 1.5rem;
+            border-radius: 8px;
+            font-family: 'Consolas', monospace;
+            margin: 1rem 0;
+        }
+
+        .command-box code {
+            color: var(--accent-green);
+        }
+
+        .command-box .comment {
+            color: #6b7280;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+
+        th, td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background: var(--bg-card);
+            color: var(--accent-blue);
+        }
+
+        tr:hover {
+            background: var(--bg-card);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-required { background: var(--accent-red); color: #fff; }
+        .badge-optional { background: var(--accent-yellow); color: #000; }
+        .badge-cleanup { background: var(--accent-purple); color: #fff; }
+
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-secondary);
+            margin-top: 3rem;
+        }
+
+        @media (max-width: 768px) {
+            .api-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats-bar {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📋 API Test Guide</h1>
+            <p>Hướng dẫn điền Test Data cho Medical API System</p>
+            <div class="stats-bar">
+                <div class="stat-item">
+                    <div class="stat-value">24</div>
+                    <div class="stat-label">Endpoints</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">6</div>
+                    <div class="stat-label">API Groups</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">✓</div>
+                    <div class="stat-label">Isolated Test DB</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">✓</div>
+                    <div class="stat-label">Auto Cleanup</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- QUICK START -->
+        <div class="run-test-section">
+            <h2>🚀 Quick Start - Chạy Test</h2>
+            <p>Chạy các lệnh sau để thực thi test suite:</p>
+            
+            <div class="command-box">
+                <code class="comment"># 1. Di chuyển đến thư mục unittest</code><br>
+                <code>cd C:\Users\Admin\Desktop\drug_icd_mapping\unittest</code><br><br>
+                
+                <code class="comment"># 2. Chạy toàn bộ test suite</code><br>
+                <code>pytest -v --tb=short</code><br><br>
+                
+                <code class="comment"># 3. Chạy test theo nhóm API cụ thể</code><br>
+                <code>pytest test_comprehensive_api.py -v -k "drugs"</code><br>
+                <code>pytest test_comprehensive_api.py -v -k "consult"</code><br>
+                <code>pytest test_comprehensive_api.py -v -k "admin"</code><br><br>
+                
+                <code class="comment"># 4. Chạy test với HTML report</code><br>
+                <code>pytest --html=report.html --self-contained-html</code>
+            </div>
+
+            <div class="success-box">
+                <h4>✅ Test Database Isolation</h4>
+                <p>Tất cả các test sử dụng database riêng biệt (<code>test_medical.db</code>). Dữ liệu production không bị ảnh hưởng.</p>
+            </div>
+
+            <div class="warning-box">
+                <h4>⚠️ Auto Cleanup</h4>
+                <p>Test data được tự động xóa sau mỗi test session. Các record có prefix <code>TEST_</code>, <code>ADMIN_TEST_</code> sẽ bị xóa.</p>
+            </div>
+        </div>
+
+        <!-- CONFIG FILE -->
+        <section class="section">
+            <h2 class="section-title">⚙️ Cấu hình Test Data</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                Chỉnh sửa file <code>test_data_config.json</code> để thay đổi dữ liệu test:
+            </p>
+            <div class="code-block">
+                <button class="copy-btn" onclick="copyPath()">📋 Copy Path</button>
+                <pre>C:\Users\Admin\Desktop\drug_icd_mapping\unittest\test_data_config.json</pre>
+            </div>
+        </section>
+
+        <!-- DRUGS API -->
+        <section class="section">
+            <h2 class="section-title">💊 Drugs API</h2>
+            <div class="api-grid">
+                <!-- GET All Drugs -->
+                <div class="api-card">
+                    <div class="api-card-header">
+                        <span class="api-method method-get">GET</span>
+                        <span class="api-endpoint">/api/v1/drugs/</span>
+                    </div>
+                    <div class="api-card-body">
+                        <p class="api-description">Lấy danh sách thuốc với phân trang</p>
+                        <div class="input-section">
+                            <div class="section-label">📥 Query Parameters</div>
+                            <table>
+                                <tr><th>Param</th><th>Type</th><th>Mô tả</th></tr>
+                                <tr><td>page</td><td>int</td><td>Trang (default: 1)</td></tr>
+                                <tr><td>limit</td><td>int</td><td>Số items/trang (default: 10)</td></tr>
+                                <tr><td>search</td><td>string</td><td>Từ khóa tìm kiếm</td></tr>
+                            </table>
+                        </div>
+                        <div class="output-section">
+                            <div class="section-label">📤 Expected Output</div>
+                            <div class="code-block">
+                                <pre>{
+  "data": [...],
+  "total": 65026,
+  "page": 1,
+  "limit": 10
+}</pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- POST Identify Drugs -->
+                <div class="api-card">
+                    <div class="api-card-header">
+                        <span class="api-method method-post">POST</span>
+                        <span class="api-endpoint">/api/v1/drugs/identify</span>
+                    </div>
+                    <div class="api-card-body">
+                        <p class="api-description">Nhận dạng thuốc từ danh sách tên</p>
+                        <div class="input-section">
+                            <div class="section-label">📥 Request Body</div>
+                            <div class="code-block">
+                                <pre>{
+  "drugs": [
+    "Paracetamol 500mg",
+    "Amoxicillin 250mg"
+  ]
+}</pre>
+                            </div>
+                        </div>
+                        <div class="output-section">
+                            <div class="section-label">📤 Expected Output</div>
+                            <div class="code-block">
+                                <pre>{
+  "results": [
+    {
+      "input": "Paracetamol 500mg",
+      "matched_drug": {...},
+      "status": "found"
+    }
+  ]
+}</pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- POST Confirm Drug -->
+                <div class="api-card">
+                    <div class="api-card-header">
+                        <span class="api-method method-post">POST</span>
+                        <span class="api-endpoint">/api/v1/drugs/confirm</span>
+                    </div>
+                    <div class="api-card-body">
+                        <p class="api-description">Lưu thuốc đã kiểm chứng vào DB</p>
+                        <div class="input-section">
+                            <div class="section-label">📥 Request Body <span class="badge badge-cleanup">Auto Cleanup</span></div>
+                            <div class="code-block">
+                                <pre>{
+  "ten_thuoc": "TEST_DRUG_001",
+  "so_dang_ky": "TEST-SDK-001",
+  "hoat_chat": "Test Ingredient",
+  "chi_dinh": "Test Indication",
+  "cong_ty_san_xuat": "Test Company",
+  "tu_dong_nghia": "Test Synonym",
+  "modified_by": "unit_test"
+}</pre>
+                            </div>
+                        </div>
+                        <div class="test-notes">
+                            <h4>📝 Ghi chú Test</h4>
+                            <ul>
+                                <li>Dùng prefix <code>TEST_</code> cho tên thuốc</li>
+                                <li>Dùng prefix <code>TEST-SDK-</code> cho số đăng ký</li>
+                                <li>Dữ liệu sẽ được xóa tự động sau test</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- GET Staging -->
+                <div class="api-card">
+                    <div class="api-card-header">
+                        <span class="api-method method-get">GET</span>
+                        <span class="api-endpoint">/api/v1/drugs/admin/staging</span>
+                    </div>
+                    <div class="api-card-body">
+                        <p class="api-description">Lấy danh sách thuốc đang chờ duyệt</p>
+                        <div class="output-section">
+                            <div class="section-label">📤 Expected Output</div>
+                            <div class="code-block">
+                                <pre>[
+  {
+    "id": 1,
+    "ten_thuoc": "...",
+    "status": "pending",
+    "conflict_type": "sdk"
+  }
+]</pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- CONSULT API -->
+        <section class="section">
+            <h2 class="section-title">🏥 Consultation API</h2>
+            <div class="api-grid">
+                <div class="api-card">
+                    <div class="api-card-header">
+                        <span class="api-method method-post">POST</span>
+                        <span class="api-endpoint">/api/v1/consult_integrated</span>
+                    </div>
+                    <div class="api-card-body">
+                        <p class="api-description">Tư vấn phác đồ điều trị (KB + AI Fallback)</p>
+                        <div class="input-section">
+                            <div class="section-label">📥 Request Body</div>
+                            <div class="code-block">
+                                <pre>{
+  "request_id": "test-001",
+  "items": [
+    {"id": "drug1", "name": "Paracetamol 500mg"},
+    {"id": "drug2", "name": "Amoxicillin 500mg"}
+  ],
+  "diagnoses": [
+    {"code": "J06.9", "name": "Nhiễm trùng hô hấp", "type": "MAIN"},
+    {"code": "R51", "name": "Đau đầu", "type": "SECONDARY"}
+  ],
+  "symptom": "optional symptom description"
+}</pre>
+                            </div>
+                        </div>
+                        <div class="output-section">
+                            <div class="section-label">📤 Expected Output</div>
+                            <div class="code-block">
+                                <pre>{
+  "results": [
+    {
+      "id": "drug1",
+      "name": "Paracetamol 500mg",
+      "category": "drug",
+      "validity": "valid",
+      "role": "Điều trị chính",
+      "explanation": "...",
+      "source": "KnowledgeBase"
+    }
+  ]
+}</pre>
+                            </div>
+                        </div>
+                        <div class="test-notes">
+                            <h4>📝 Test Cases</h4>
+                            <ul>
+                                <li>Test với thuốc có trong Knowledge Base</li>
+                                <li>Test với thuốc không có → trigger AI fallback</li>
+                                <li>Test với nhiều diagnoses (MAIN + SECONDARY)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ADMIN API -->
+        <section class="section">
+            <h2 class="section-title">🔧 Admin API</h2>
+            <div class="api-grid">
+                <!-- Admin Drugs CRUD -->
+                <div class="api-card">
+                    <div class="api-card-header">
+                        <span class="api-method method-get">GET</span>
+                        <span class="api-endpoint">/api/v1/admin/drugs</span>
+                    </div>
+                    <div class="api-card-body">
+                        <p class="api-description">Lấy danh sách thuốc (Admin view)</p>
+                        <table>
+                            <tr><th>Param</th><th>Type</th><th>Mô tả</th></tr>
+                            <tr><td>page</td><td>int</td><td>Trang</td></tr>
+                            <tr><td>limit</td><td>int</td><td>Items/trang</td></tr>
+                            <tr><td>search</td><td>string</td><td>Tìm kiếm</td></tr>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="api-card">
+                    <div class="api-card-header">
+                        <span class="api-method method-delete">DELETE</span>
+                        <span class="api-endpoint">/api/v1/admin/drugs/{sdk}</span>
+                    </div>
+                    <div class="api-card-body">
+                        <p class="api-description">Xóa thuốc theo Số Đăng Ký</p>
+                        <div class="test-notes">
+                            <h4>📝 Test Flow</h4>
+                            <ul>
+                                <li>1. Tạo thuốc test với POST /drugs</li>
+                                <li>2. Verify thuốc tồn tại với GET</li>
+                                <li>3. Xóa với DELETE /drugs/{sdk}</li>
+                                <li>4. Verify đã xóa thành công</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Admin Diseases -->
+                <div class="api-card">
+                    <div class="api-card-header">
+                        <span class="api-method method-post">POST</span>
+                        <span class="api-endpoint">/api/v1/admin/diseases</span>
+                    </div>
+                    <div class="api-card-body">
+                        <p class="api-description">Thêm bệnh mới</p>
+                        <div class="code-block">
+                            <pre>{
+  "icd_code": "TEST99",
+  "disease_name": "Test Disease",
+  "chapter_name": "Test Chapter"
+}</pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Admin Links -->
+                <div class="api-card">
+                    <div class="api-card-header">
+                        <span class="api-method method-get">GET</span>
+                        <span class="api-endpoint">/api/v1/admin/links</span>
+                    </div>
+                    <div class="api-card-body">
+                        <p class="api-description">Lấy danh sách liên kết Thuốc-Bệnh</p>
+                        <div class="output-section">
+                            <div class="section-label">📤 Output</div>
+                            <div class="code-block">
+                                <pre>{
+  "items": [...],
+  "total": 1234,
+  "page": 1,
+  "limit": 20
+}</pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- DATA MANAGEMENT -->
+        <section class="section">
+            <h2 class="section-title">📊 Data Management API</h2>
+            <div class="api-grid">
+                <div class="api-card">
+                    <div class="api-card-header">
+                        <span class="api-method method-post">POST</span>
+                        <span class="api-endpoint">/api/v1/data/ingest</span>
+                    </div>
+                    <div class="api-card-body">
+                        <p class="api-description">Import CSV vào Knowledge Base</p>
+                        <div class="input-section">
+                            <div class="section-label">📥 Form Data (multipart/form-data)</div>
+                            <div class="code-block">
+                                <pre>file: [CSV File]
+
+CSV Format:
+drug_name,disease_name,icd_code,phan_loai
+Paracetamol,Đau đầu,R51,valid
+Amoxicillin,Viêm họng,J06.9,valid</pre>
+                            </div>
+                        </div>
+                        <div class="output-section">
+                            <div class="section-label">📤 Expected Output</div>
+                            <div class="code-block">
+                                <pre>{
+  "status": "processing",
+  "batch_id": "uuid-here",
+  "message": "File received and ETL started."
+}</pre>
+                            </div>
+                        </div>
+                        <div class="warning-box">
+                            <h4>⚠️ Async Processing</h4>
+                            <p>ETL chạy background. Kiểm tra kết quả trong bảng <code>knowledge_base</code>.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ANALYSIS API -->
+        <section class="section">
+            <h2 class="section-title">🔬 Analysis API</h2>
+            <div class="api-grid">
+                <div class="api-card">
+                    <div class="api-card-header">
+                        <span class="api-method method-post">POST</span>
+                        <span class="api-endpoint">/api/v1/analysis/treatment-analysis</span>
+                    </div>
+                    <div class="api-card-body">
+                        <p class="api-description">Phân tích điều trị tổng hợp (Drugs + Diseases + AI)</p>
+                        <div class="input-section">
+                            <div class="section-label">📥 Request Body</div>
+                            <div class="code-block">
+                                <pre>{
+  "drugs": [
+    "Candesartan 16mg",
+    "Paracetamol 500mg"
+  ],
+  "diagnosis": [
+    {"name": "Tăng huyết áp", "icd10": "I10"},
+    {"name": "Đau đầu", "icd10": "R51"}
+  ]
+}</pre>
+                            </div>
+                        </div>
+                        <div class="output-section">
+                            <div class="section-label">📤 Expected Output</div>
+                            <div class="code-block">
+                                <pre>{
+  "drugs_info": [...],
+  "diseases_info": [...],
+  "ai_analysis": {
+    "summary": "...",
+    "recommendations": [...]
+  }
+}</pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TEST CHECKLIST -->
+        <section class="section">
+            <h2 class="section-title">✅ Test Checklist</h2>
+            <table>
+                <tr>
+                    <th>API Group</th>
+                    <th>Endpoints</th>
+                    <th>Test File</th>
+                    <th>Status</th>
+                </tr>
+                <tr>
+                    <td>💊 Drugs</td>
+                    <td>12</td>
+                    <td><code>test_comprehensive_api.py::TestDrugsAPI</code></td>
+                    <td><span class="badge" style="background: var(--accent-green);">Ready</span></td>
+                </tr>
+                <tr>
+                    <td>🦠 Diseases</td>
+                    <td>1</td>
+                    <td><code>test_comprehensive_api.py::TestDiseasesAPI</code></td>
+                    <td><span class="badge" style="background: var(--accent-green);">Ready</span></td>
+                </tr>
+                <tr>
+                    <td>🏥 Consult</td>
+                    <td>1</td>
+                    <td><code>test_comprehensive_api.py::TestConsultAPI</code></td>
+                    <td><span class="badge" style="background: var(--accent-green);">Ready</span></td>
+                </tr>
+                <tr>
+                    <td>🔧 Admin</td>
+                    <td>8</td>
+                    <td><code>test_comprehensive_api.py::TestAdminAPI</code></td>
+                    <td><span class="badge" style="background: var(--accent-green);">Ready</span></td>
+                </tr>
+                <tr>
+                    <td>📊 Data</td>
+                    <td>1</td>
+                    <td><code>test_comprehensive_api.py::TestDataManagement</code></td>
+                    <td><span class="badge" style="background: var(--accent-green);">Ready</span></td>
+                </tr>
+                <tr>
+                    <td>🔬 Analysis</td>
+                    <td>1</td>
+                    <td><code>test_comprehensive_api.py::TestAnalysisAPI</code></td>
+                    <td><span class="badge" style="background: var(--accent-green);">Ready</span></td>
+                </tr>
+            </table>
+        </section>
+
+        <footer>
+            <p>Medical API Test Suite | Generated 2026-01-16</p>
+            <p>📂 Test Files: <code>C:\Users\Admin\Desktop\drug_icd_mapping\unittest</code></p>
+        </footer>
+    </div>
+
+    <script>
+        function copyPath() {
+            navigator.clipboard.writeText('C:\\Users\\Admin\\Desktop\\drug_icd_mapping\\unittest\\test_data_config.json');
+            alert('Đã copy đường dẫn!');
+        }
+    </script>
+</body>
+</html>

@@ -1,42 +1,125 @@
 # Phân Tích `app/api/consult.py`
 
-Cũng giống như `drugs.py`, file `consult.py` đang vi phạm nghiêm trọng nguyên tắc phân tách trách nhiệm (Separation of Concerns).
+> **Trạng thái**: ✅ **ĐÃ REFACTORED** (2026-01-16)
 
-## Vấn Đề Tìm Thấy
+## Tóm Tắt
 
-1.  **Truy Cập Database Trực Tiếp (Direct DB Access)**:
-    - API Handler đang gọi `db.get_connection()` và tự tạo cursor để chạy SQL (dòng 64-90).
-    - Câu lệnh SQL phức tạp (`SELECT count(*)... GROUP BY...`) nằm ngay trong code xử lý request.
+File `consult.py` đã được refactor thành công. API Controller giờ chỉ đóng vai trò điều phối (thin controller), toàn bộ business logic đã được chuyển sang `ConsultationService`.
 
-2.  **Logic Tính Toán (Business Logic)**:
-    - Công thức tính độ tin cậy (`conf = math.log10(freq) / 2.0`) nằm hard-code trong API (dòng 99).
-    - Logic so khớp (loop lồng nhau giữa thuốc và chẩn đoán) rất phức tạp (dòng 70-111).
+---
 
-3.  **Xử Lý AI & Fallback**:
-    - Logic gọi hàm `analyze_treatment_group` và xử lý kết quả trả về, map ngược lại ID thuốc (dòng 126-165) là logic xử lý dữ liệu thuần túy.
+## Kiến Trúc Hiện Tại
 
-## Đề Xuất Refactoring
+### API Controller (`app/api/consult.py`)
+```python
+from app.service.consultation_service import ConsultationService
 
-Cần tạo **`app/service/consultation_service.py`** để chứa toàn bộ logic "Hybrid Consultation" này.
+router = APIRouter()
+consultation_service = ConsultationService(db_core=db.db_core)
 
-**Cấu trúc Service dự kiến**:
+@router.post("/consult_integrated", response_model=ConsultResponse)
+async def consult_integrated(payload: ConsultRequest):
+    results_data = await consultation_service.consult_integrated(payload.items, payload.diagnoses)
+    results = [ConsultResult(**item) for item in results_data]
+    return ConsultResponse(results=results)
+```
+
+### Service Layer (`app/service/consultation_service.py`)
 ```python
 class ConsultationService:
-    def check_knowledge_base(self, drug, diagnoses):
-        # Chứa SQL query và logic tính confidence
+    def __init__(self, db_core: DatabaseCore = None):
+        self.db_core = db_core or DatabaseCore()
+
+    def check_knowledge_base(self, drug_name: str, disease_name: str, disease_type: str) -> Optional[Dict]:
+        """Check Internal Knowledge Base (Rule-based) with TDV Priority."""
+        # Query both treatment_type (AI) and tdv_feedback (Human)
+        # 1. Check for 'tdv_feedback' -> Return immediately (Source: INTERNAL_KB_TDV)
+        # 2. Fallback to 'treatment_type' (Source: INTERNAL_KB_AI) if confidence >= 0.8
         pass
 
-    async def consult_integrated(self, items, diagnoses):
-        # 1. Check KB
-        # 2. Collect failed items -> Call AI
+    async def consult_integrated(self, items: List, diagnoses: List) -> List:
+        """Hybrid Consultation: KB Check → AI Fallback."""
+        # 1. Check KB cho từng drug-diagnosis pair
+        # 2. Collect unresolved items → Call AI
         # 3. Merge results
         pass
+
+    async def _call_ai_fallback(self, drugs: List, diagnoses: List) -> List:
+        """Internal: Call AI service cho các items không tìm thấy trong KB."""
+        pass
 ```
 
-**API Controller** sẽ trở nên rất sạch:
-```python
-@router.post("/consult_integrated")
-async def consult_integrated(payload: ConsultRequest):
-    results = await consultation_service.consult_integrated(payload.items, payload.diagnoses)
-    return {"results": results}
+---
+
+## Các Vấn Đề Đã Fix
+
+| # | Vấn đề cũ | Giải pháp |
+|---|-----------|-----------|
+| 1 | API truy cập DB trực tiếp | ✅ Delegate sang `ConsultationService` |
+| 2 | SQL hard-coded trong controller | ✅ Di chuyển vào `check_knowledge_base()` |
+| 3 | Logic confidence trong API | ✅ Nằm trong service method |
+| 4 | Nested loops phức tạp | ✅ Tách thành methods riêng |
+| 5 | AI fallback logic | ✅ Tách thành `_call_ai_fallback()` |
+
+---
+
+## Flow Hiện Tại
+
 ```
+POST /consult_integrated
+        │
+        ▼
+┌──────────────────┐
+│  API Controller  │  (Thin - chỉ parse request/response)
+└────────┬─────────┘
+         │
+         ▼
+┌──────────────────────────┐
+│  ConsultationService     │
+│  .consult_integrated()   │
+└────────┬─────────────────┘
+         │
+    ┌────┴────┐
+    │         │
+    ▼         ▼
+┌─────────┐ ┌────────────┐
+│ Check   │ │ AI Fallback│
+│ KB      │ │ Service    │
+│(Priority│ └────────────┘
+│ Logic)  │
+└─────────┘
+    │
+    ├─ 1. Check TDV Feedback (Expert) ✅
+    └─ 2. Check AI Classification (Frequency) ⚠️
+```
+
+---
+
+## Files Liên Quan
+
+| File | Mô tả |
+|------|-------|
+| `app/api/consult.py` | API endpoint (thin controller) |
+| `app/service/consultation_service.py` | Business logic chính |
+| `app/service/ai_consult_service.py` | AI/LLM integration |
+| `app/database/core.py` | Database access layer |
+
+---
+
+## Test Coverage
+
+```bash
+pytest test_comprehensive_api.py::TestConsultAPI -v
+```
+
+- `test_consult_integrated` - Test hybrid consultation
+- `test_consult_empty_items` - Test edge case
+
+---
+
+## Changelog
+
+| Date | Change |
+|------|--------|
+| 2026-01-16 | ✅ Refactoring hoàn tất. Service layer đã được tạo. |
+| 2026-01-15 | 📝 Phân tích ban đầu, đề xuất refactoring |

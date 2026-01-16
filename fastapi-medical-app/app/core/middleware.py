@@ -45,22 +45,37 @@ class LogMiddleware(BaseHTTPMiddleware):
         return os.path.join(self.log_dir, filename)
 
     async def set_body(self, request: Request, body: bytes):
+        """
+        Restore the request body after reading it.
+        Creates a proper ASGI receive callable that handles both request body and disconnect.
+        """
+        body_sent = False
+        
         async def receive():
-            return {"type": "http.request", "body": body}
+            nonlocal body_sent
+            if not body_sent:
+                body_sent = True
+                return {"type": "http.request", "body": body, "more_body": False}
+            # After body is sent, return disconnect on subsequent calls
+            return {"type": "http.disconnect"}
+        
         request._receive = receive
 
     async def dispatch(self, request: Request, call_next):
         # 1. Log Request
         start_time = time.time()
         
-        # Read body (safely)
-        try:
-            body_bytes = await request.body()
-            await self.set_body(request, body_bytes) # restore for next handler
-            request_body = body_bytes.decode("utf-8") if body_bytes else ""
-        except:
-            request_body = "<Could not read body>"
-
+        # IMPORTANT: Do NOT read request body here to avoid ASGI issues.
+        # We will log the body only for specific content types and only if needed.
+        request_body = ""
+        
+        # Check if it's a POST/PUT/PATCH with JSON body
+        content_type = request.headers.get("content-type", "")
+        if request.method in ("POST", "PUT", "PATCH") and "application/json" in content_type:
+            # For logging purposes, we can try to read the body BUT it may cause issues.
+            # Instead, we'll just log that there was a JSON body without reading it.
+            request_body = "<JSON body - not captured to avoid ASGI issues>"
+        
         # 2. Call endpoint
         try:
             response = await call_next(request)
@@ -69,16 +84,9 @@ class LogMiddleware(BaseHTTPMiddleware):
             self.write_log(request, request_body, 500, f"Error: {e}", time.time() - start_time)
             raise e
 
-        # 3. Read Response Body
-        # We need to act differently based on response type. 
-        # StreamingResponse is hard to log fully without memory impact, usually we skipped it or peeked.
-        # But for JSON APIs, it's usually small.
-        
+        # 3. Read Response Body (only for JSON responses)
         response_body = ""
         if isinstance(response, StreamingResponse):
-            # Capture content by iterating the iterator, then reconstructing it
-            # This is expensive for large files!
-            # Heuristic: Only capture if content-type is json or text
             media_type = response.media_type or ""
             if "application/json" in media_type or "text/" in media_type:
                 content = b""
@@ -87,8 +95,10 @@ class LogMiddleware(BaseHTTPMiddleware):
                 
                 response_body = content.decode("utf-8", errors="ignore")
                 
-                # Re-create iterator for the actual response
-                response.body_iterator = iter([content])
+                # Re-create iterator for the actual response - use async generator
+                async def body_generator():
+                    yield content
+                response.body_iterator = body_generator()
             else:
                 response_body = "<Binary/Stream content>"
         else:
