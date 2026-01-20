@@ -326,7 +326,8 @@ def process_raw_log(batch_id: str, text_content: str) -> dict:
             try:
                  # === DRUG INFO ===
                 # Handle various column name formats from different CSV sources
-                drug_name = (row.get('Tên thuốc', '') or row.get('ten_thuoc', '') or row.get('Ten_thuoc', '') or '').strip()
+                # User Request (2026-01-20): Map '?column?' to thuoc_chinh (Drug Name)
+                drug_name = (row.get('Tên thuốc', '') or row.get('ten_thuoc', '') or row.get('Ten_thuoc', '') or row.get('?column?', '') or row.get('thuoc_chinh', '') or '').strip()
                 if not drug_name:
                     stats["errors"] += 1
                     continue
@@ -336,7 +337,7 @@ def process_raw_log(batch_id: str, text_content: str) -> dict:
                 if drug_ref_id: stats["drugs_matched"] += 1
                 
                 # === PRIMARY DISEASE ===
-                primary_icd_raw = (row.get('Mã ICD (Chính)', '') or row.get('?column?', '') or row.get('benh_chinh', '') or '').strip()
+                primary_icd_raw = (row.get('Mã ICD (Chính)', '') or row.get('benh_chinh', '') or '').strip()
                 if not primary_icd_raw:
                     stats["errors"] += 1
                     continue
