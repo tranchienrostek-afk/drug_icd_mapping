@@ -18,6 +18,7 @@ jobs:
         run: |
           # Allow root execution if needed
           export RUNNER_ALLOW_RUNASROOT=1
+          export HOME=/root
           
           TARGET_DIR="/root/workspace/drug_icd_mapping/fastapi-medical-app"
           
