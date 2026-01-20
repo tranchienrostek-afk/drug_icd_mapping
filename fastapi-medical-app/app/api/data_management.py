@@ -1,5 +1,5 @@
-
-from fastapi import APIRouter, UploadFile, File, BackgroundTasks, HTTPException
+from datetime import datetime, timedelta
+from fastapi import APIRouter, UploadFile, File, BackgroundTasks, HTTPException, status, Depends
 from app.services import DrugDbEngine
 from app.service.etl_service import process_raw_log
 import uuid
@@ -8,6 +8,29 @@ import logging
 router = APIRouter()
 db = DrugDbEngine()
 logger = logging.getLogger(__name__)
+
+# Rate Limiting State (In-Memory)
+LAST_INGEST_TIME = None
+COOLDOWN_TIMEDELTA = timedelta(minutes=2)
+
+def check_ingest_rate_limit():
+    """
+    Enforce 1 request per 2 minutes for ingest API.
+    Raises 429 if cooldown has not passed.
+    """
+    global LAST_INGEST_TIME
+    now = datetime.now()
+    
+    if LAST_INGEST_TIME and (now - LAST_INGEST_TIME) < COOLDOWN_TIMEDELTA:
+        remaining = COOLDOWN_TIMEDELTA - (now - LAST_INGEST_TIME)
+        reason = f"Rate limit exceeded. Please wait {int(remaining.total_seconds())} seconds."
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=reason
+        )
+    
+    # Update time immediately upon acceptance (simple leaky bucket)
+    LAST_INGEST_TIME = now
 
 def run_etl_with_logging(batch_id: str, text_content: str):
     """Wrapper to catch and log ETL errors"""
@@ -28,11 +51,12 @@ def run_etl_with_logging(batch_id: str, text_content: str):
         import traceback
         traceback.print_exc()
 
-@router.post("/ingest")
+@router.post("/ingest", dependencies=[Depends(check_ingest_rate_limit)])
 async def ingest_medical_logs(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
     """
     Ingest CSV logs for Knowledge Base building.
     Format: CSV with columns 'Tên thuốc', 'Mã ICD (Chính)', etc.
+    Rate Limit: 1 request every 2 minutes.
     """
     if not file.filename.endswith('.csv'):
         raise HTTPException(status_code=400, detail="Only CSV files are allowed.")
