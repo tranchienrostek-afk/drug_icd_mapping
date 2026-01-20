@@ -16,9 +16,13 @@ jobs:
       # However, we want to update the EXISTING deployment folder, not just the runner's workspace.
       - name: Deploy to /root/workspace
         run: |
-          # Allow root execution if needed
+          # Safety: Isolate this project to avoid conflicts and allow root operations
+          # Migration: Cleanup LEGACY container to free port 8000
+          docker rm -f drug_icd_mapping_web_1 || true
+          
           export RUNNER_ALLOW_RUNASROOT=1
           export HOME=/root
+          export COMPOSE_PROJECT_NAME=drug_icd_mapping_prod
           
           TARGET_DIR="/root/workspace/drug_icd_mapping/fastapi-medical-app"
           
@@ -34,9 +38,6 @@ jobs:
           # Workaround for docker-compose 1.29 KeyError: 'ContainerConfig'
           docker-compose rm -f -s web || true
           docker-compose up -d --build --no-deps web
-          
-          echo "3. Pruning old images..."
-          docker image prune -f
           
           echo ">>> DEPLOYMENT SUCCESSFUL <<<"
           docker-compose ps
