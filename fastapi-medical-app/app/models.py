@@ -129,16 +129,34 @@ class ConsultRequest(BaseModel):
 
     model_config = ConfigDict(json_schema_extra={
         "example": {
-            "request_id": "REQ-001",
-            "items": [
-                {"id": "d1", "name": "Paracetamol 500mg"},
-                {"id": "d2", "name": "Amoxicillin 250mg"}
-            ],
+            "request_id": "BT/24594",
+            "symptom": "Viêm đường hô hấp - Viêm mũi họng cấp - Nhiễm RSV",
             "diagnoses": [
-                {"code": "R51", "name": "Đau đầu", "type": "MAIN"},
-                {"code": "J06.9", "name": "Nhiễm trùng đường hô hấp", "type": "SECONDARY"}
+                {
+                    "code": "J00",
+                    "name": "Viêm mũi họng cấp [cảm thường]",
+                    "type": "MAIN"
+                },
+                {
+                    "code": "B97.4",
+                    "name": "Vi rút hợp bào đường hô hấp là nguyên nhân gây bệnh phân loại ở chương khác",
+                    "type": "SECONDARY"
+                }
             ],
-            "symptom": "Đau đầu kèm sốt nhẹ"
+            "items": [
+                {
+                    "id": "916b023e-a5cb-4e8e-b0d4-309f2d02d778",
+                    "name": "Ambroxol (Drenoxol)"
+                },
+                {
+                    "id": "3afc1baa-ff87-44ee-affa-f074947ac51b",
+                    "name": "Các kháng thể gắn với interferon ở người (Anaferon)"
+                },
+                {
+                    "id": "b4d5e6",
+                    "name": "Amoxicillin 500mg"
+                }
+            ]
         }
     })
 
