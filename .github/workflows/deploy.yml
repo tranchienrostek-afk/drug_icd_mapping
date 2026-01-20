@@ -7,28 +7,33 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
-      - name: Deploy to Server via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          password: ${{ secrets.SSH_PASSWORD }}
-          port: 22
-          script: |
-            set -e
-            cd /root/workspace/drug_icd_mapping/fastapi-medical-app
-            
-            echo "1. Pulling latest code..."
-            git pull origin main
-            
-            echo "2. Rebuilding Container..."
-            cp Dockerfile.prod Dockerfile
-            docker-compose up -d --build --no-deps web
-            
-            echo "3. Pruning old images..."
-            docker image prune -f
-            
-            echo ">>> DEPLOYMENT SUCCESSFUL <<<"
-            docker-compose ps
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      
+      # Since the runner is ON the server, we can run commands directly.
+      # However, we want to update the EXISTING deployment folder, not just the runner's workspace.
+      - name: Deploy to /root/workspace
+        run: |
+          # Allow root execution if needed
+          export RUNNER_ALLOW_RUNASROOT=1
+          
+          TARGET_DIR="/root/workspace/drug_icd_mapping/fastapi-medical-app"
+          
+          echo "Deploying to $TARGET_DIR"
+          cd $TARGET_DIR
+          
+          echo "1. Pulling latest code..."
+          git config --global --add safe.directory $TARGET_DIR
+          git pull origin main
+          
+          echo "2. Rebuilding Container..."
+          cp Dockerfile.prod Dockerfile
+          docker-compose up -d --build --no-deps web
+          
+          echo "3. Pruning old images..."
+          docker image prune -f
+          
+          echo ">>> DEPLOYMENT SUCCESSFUL <<<"
+          docker-compose ps
