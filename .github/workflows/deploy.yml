@@ -31,6 +31,8 @@ jobs:
           
           echo "2. Rebuilding Container..."
           cp Dockerfile.prod Dockerfile
+          # Workaround for docker-compose 1.29 KeyError: 'ContainerConfig'
+          docker-compose rm -f -s web || true
           docker-compose up -d --build --no-deps web
           
           echo "3. Pruning old images..."
