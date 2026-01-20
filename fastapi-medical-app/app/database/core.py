@@ -1,6 +1,8 @@
 import sqlite3
 import os
 import re
+import time
+import gc
 
 DB_PATH = os.getenv("DB_PATH", "app/database/medical.db")
 
@@ -13,10 +15,38 @@ def dict_factory(cursor, row):
 class DatabaseCore:
     def __init__(self, db_path=DB_PATH):
         self.db_path = db_path
-        self._ensure_tables()
+        # Robust Init with Retry for Windows Docker
+        max_retries = 10
+        for attempt in range(max_retries):
+            try:
+                self._ensure_tables()
+                print(f"[DB Core] Init successful on attempt {attempt+1}")
+                break
+            except Exception as e:
+                print(f"[DB Core Warning] Init failed (attempt {attempt+1}/{max_retries}): {e}")
+                time.sleep(2)
+        else:
+            print("[DB Core ERROR] FATAL: Could not initialize DB after multiple attempts.")
+            # We raise to let Uvicorn restart the worker
+            raise RuntimeError("Database Init Failed after Retries")
 
     def get_connection(self):
-        conn = sqlite3.connect(self.db_path, timeout=30.0)
+        # Retry logic for connection
+        for attempt in range(5):
+            try:
+                # GC to clear old handles
+                gc.collect() 
+                conn = sqlite3.connect(self.db_path, timeout=60.0)
+                # Force DELETE mode to avoid WAL lock issues on Windows Mounts
+                conn.execute("PRAGMA journal_mode=DELETE;")
+                conn.row_factory = dict_factory
+                return conn
+            except Exception:
+                time.sleep(1)
+        
+        # Last ditch attempt
+        conn = sqlite3.connect(self.db_path, timeout=60.0)
+        conn.execute("PRAGMA journal_mode=DELETE;")
         conn.row_factory = dict_factory
         return conn
 
@@ -146,6 +176,7 @@ class DatabaseCore:
             conn.commit()
         except sqlite3.Error as e:
             print(f"DB Init Error: {e}")
+            raise # Re-raise to trigger retry logic in __init__
         finally:
             conn.close()
 

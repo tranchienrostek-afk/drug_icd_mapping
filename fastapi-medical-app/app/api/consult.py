@@ -18,7 +18,7 @@ async def consult_integrated(payload: ConsultRequest):
     2. Fallback to External AI (if needed).
     """
     try:
-        results_data = await consultation_service.consult_integrated(payload.items, payload.diagnoses)
+        results_data = await consultation_service.process_integrated_consultation(payload)
         
         # Map Dict results to Pydantic Models
         results = [ConsultResult(**item) for item in results_data]

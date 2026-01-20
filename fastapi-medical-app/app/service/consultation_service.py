@@ -1,4 +1,5 @@
 import math
+import sqlite3
 from typing import List, Dict, Optional
 from app.models import ConsultResult 
 from app.database.core import DatabaseCore
@@ -12,70 +13,112 @@ class ConsultationService:
         else:
             self.db_core = db_core
 
-    def check_knowledge_base(self, drug_name: str, disease_name: str, disease_type: str) -> Optional[Dict]:
+    async def process_integrated_consultation(self, request) -> List[Dict]:
         """
-        Check Internal Knowledge Base (Rule-based) with TDV Priority.
+        Integrated Consultation: Internal KB Only.
         
         Logic:
-        1. Check for 'tdv_feedback' (Human Verified) -> Highest Priority
-        2. Fallback to 'treatment_type' (AI) -> Weighted by frequency
+        1. Iterate Drug x Diagnosis pairs.
+        2. Normalize inputs.
+        3. Query KB (Priority: TDV > AI).
+        4. Skip if not found.
+        """
+        results = []
         
-        Returns best match dict or None
+        # Pre-process diagnoses (Main + Secondary)
+        # Actually, we treat them equally for interaction checking, 
+        # but logically we might want to know which is MAIN.
+        # The query does strict check on disease_icd.
+        
+        # 1. Iterate Inputs
+        for item in request.items:
+            # Normalize Drug Name
+            dataset_drug_name = normalize_text(item.name)
+            is_resolved = False
+            
+            for diag in request.diagnoses:
+                # Normalize Disease (ICD Code should be lowercase to match DB)
+                disease_icd = diag.code.strip().lower()
+                
+                # 2. Check KB
+                match = self.check_knowledge_base_strict(dataset_drug_name, disease_icd)
+                
+                if match:
+                    results.append({
+                        "id": item.id,
+                        "name": item.name,
+                        "category": "drug",
+                        "validity": match['validity'],
+                        "role": match['role'],
+                        "explanation": match['explanation'],
+                        "source": match['source']
+                    })
+                    is_resolved = True
+            
+            # 3. Handle Not Found (Keep in list per user request)
+            if not is_resolved:
+                 results.append({
+                    "id": item.id,
+                    "name": item.name,
+                    "category": "drug",
+                    "validity": "unknown", # Or empty string? User said "trống" but Model requires str
+                    "role": "", 
+                    "explanation": "Không tìm thấy thông tin trong cơ sở dữ liệu.",
+                    "source": "INTERNAL_KB_EMPTY"
+                })
+        
+        return results
+
+    def check_knowledge_base_strict(self, drug_name_norm: str, disease_icd: str) -> Optional[Dict]:
+        """
+        Strict Lookup by Normalized Drug Name + Disease ICD.
         """
         conn = self.db_core.get_connection()
-        conn.row_factory = lambda c, r: dict(zip([col[0] for col in c.description], r))
+        conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
         try:
-            drug_norm = normalize_text(drug_name)
-            diag_norm = normalize_text(disease_name)
-            
-            # Query grouping by both classification types to find best match
+            # Query for exact match on drug_name_norm + disease_icd
             cursor.execute("""
                 SELECT 
                     treatment_type, 
                     tdv_feedback, 
-                    SUM(frequency) as total_freq,
-                    count(*) as record_count
+                    frequency
                 FROM knowledge_base 
-                WHERE drug_name_norm = ? AND disease_name_norm = ?
-                GROUP BY treatment_type, tdv_feedback
-                ORDER BY total_freq DESC
-            """, (drug_norm, diag_norm))
+                WHERE drug_name_norm = ? AND disease_icd = ?
+                ORDER BY last_updated DESC
+            """, (drug_name_norm, disease_icd))
             
             rows = cursor.fetchall()
             
             if not rows:
                 return None
-                
-            # 1. Check for TDV Feedback (Highest Priority)
+            
+            # Logic: Iterate to find best match (Priority: TDV > AI)
+            
+            # 1. Check for TDV Feedback
             for row in rows:
-                if row['tdv_feedback'] and row['tdv_feedback'].lower() not in ('', 'none', 'null'):
+                raw_role = row['tdv_feedback']
+                if raw_role and raw_role.lower() not in ('', 'none', 'null'):
+                    # Clean the role string (remove JSON artifacts if present)
+                    role = self._clean_role_string(raw_role)
+                    
                     return {
-                        "validity": "valid", # TDV implies valid/checked
-                        "role": row['tdv_feedback'],
-                        "explanation": f"Expert Verified: Classified as '{row['tdv_feedback']}' by Medical Reviewer.",
+                        "validity": "valid",
+                        "role": role,
+                        "explanation": f"Expert Verified: Classified as '{role}' bởi TĐV.",
                         "source": "INTERNAL_KB_TDV"
                     }
             
-            # 2. Fallback to AI Classification (treatment_type)
-            # Find row with highest frequency that has a valid treatment_type
-            best_ai_row = None
+            # 2. Check for AI Ingested Data
             for row in rows:
-                if row['treatment_type']:
-                    best_ai_row = row
-                    break
-            
-            if best_ai_row:
-                freq = best_ai_row['total_freq']
-                # Calculate Dynamic Confidence
-                conf = min(0.99, math.log10(freq) / 2.0) if freq > 1 else 0.1
-                
-                if conf >= 0.8: # High confidence threshold for AI
+                raw_role = row['treatment_type']
+                if raw_role:
+                    role = self._clean_role_string(raw_role)
                     return {
-                        "validity": "valid", 
-                        "role": best_ai_row['treatment_type'],
-                        "explanation": f"Internal KB (AI): Found {freq} records. Confidence: {conf:.0%}",
+                        "validity": "valid",
+                        "role": role,
+                        "explanation": "Internal KB (AI): Ingested from historical usage.",
                         "source": "INTERNAL_KB_AI"
                     }
                     
@@ -84,104 +127,19 @@ class ConsultationService:
         finally:
             conn.close()
 
-    async def consult_integrated(self, items: List, diagnoses: List) -> List:
-        results = []
-        drugs_for_ai = []
-        
-        # 1. Prepare Data
-        main_diagnoses = [d for d in diagnoses if d.type == 'MAIN']
-        if not main_diagnoses:
-            main_diagnoses = diagnoses[:1] if diagnoses else []
-        other_diagnoses = [d for d in diagnoses if d not in main_diagnoses]
-        all_diagnoses = main_diagnoses + other_diagnoses
-        
-        # 2. Check KB
-        for item in items:
-            is_resolved = False
-            best_match = None
-            
-            # Iterate through diagnoses (Priority: Main -> Secondary)
-            for diag in all_diagnoses:
-                match = self.check_knowledge_base(item.name, diag.name, diag.type)
-                if match:
-                    is_resolved = True
-                    best_match = match
-                    break
-            
-            if is_resolved and best_match:
-                results.append({
-                    "id": item.id,
-                    "name": item.name,
-                    "validity": best_match['validity'],
-                    "role": best_match['role'],
-                    "explanation": best_match['explanation'],
-                    "source": best_match['source']
-                })
-            else:
-                drugs_for_ai.append(item)
-
-        # 3. AI Fallback
-        if drugs_for_ai:
-            ai_results = await self._call_ai_fallback(drugs_for_ai, diagnoses)
-            results.extend(ai_results)
-            
-        return results
-
-    async def _call_ai_fallback(self, drugs: List, diagnoses: List) -> List:
+    def _clean_role_string(self, raw: str) -> str:
         """
-        Internal: Call OpenAI/LLM for advanced consultation
+        Helper to clean JSON-like or dirty strings from DB.
+        Ex: '["{valid}"]' -> 'valid'
+            '["{secondary drug}"]' -> 'secondary drug'
         """
-        results = []
-        try:
-            from app.services import analyze_treatment_group # Import here to avoid circular dependency if any, or better, move logic here
-            # Ideally analyze_treatment_group should be in AI service. For now, assuming it exists or we mock it.
-            # If it was deleted from services.py, this will fail. We need to verify.
-            # Assuming we need to implement it or it is imported. 
-            pass 
-        except ImportError:
-             # Fallback if analyze_treatment_group is missing
-             pass
-             
-        drug_dicts = [{"ten_thuoc": d.name, "so_dang_ky": ""} for d in drugs]
-        disease_dicts = [{"disease_name": d.name, "icd_code": d.code} for d in diagnoses]
+        if not raw: return ""
+        s = raw.strip()
         
-        try:
-             # We invoke the AI logic here. 
-             # NOTE: Since analyze_treatment_group might have been lost in services.py refactor, 
-             # I should probably MOVE that logic here or into a new ai_service.py.
-             # For this step, I will PLACEHOLDER the AI call to ensure structure, 
-             # and then we might need to fix 'analyze_treatment_group'.
-             
-             # Simulating AI Call or using existing function if importable
-             # Logic copied from original consult.py loop
-             
-             # Re-implementing simplified AI Call wrapper or using a hypothetical ai_service
-             from app.service.ai_consult_service import analyze_treatment_group_wrapper # Hypothetical
-             ai_res = await analyze_treatment_group_wrapper(drug_dicts, disease_dicts)
-             
-             # ... Logic to parse ai_res ...
-             # Since I don't have the full AI logic code right now (it was imported), 
-             # I will mark this as "To Be Implement/Restored" or use a safe fallback.
-             
-             for d in drugs:
-                 results.append({
-                    "id": d.id,
-                    "name": d.name,
-                    "validity": "unknown",
-                    "role": "external AI suggestion", 
-                    "explanation": "AI Service response (Mock/Placeholder)",
-                    "source": "EXTERNAL_AI"
-                })
-
-        except Exception as e:
-            for d in drugs:
-                 results.append({
-                    "id": d.id,
-                    "name": d.name,
-                    "validity": "error",
-                    "role": "error",
-                    "explanation": f"AI Error: {str(e)}",
-                    "source": "ERROR"
-                })
+        # Remove JSON list brackets
+        s = s.replace('[', '').replace(']', '')
         
-        return results
+        # Remove quotes and curly braces
+        s = s.replace('"', '').replace("'", '').replace('{', '').replace('}', '')
+        
+        return s.strip()

@@ -1,9 +1,10 @@
 import pytest
 import sqlite3
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, AsyncMock
 from app.services import DrugDbEngine
 from app.service.etl_service import process_raw_log
-from app.api.consult import consult_integrated, ConsultRequest, DrugItem, DiagnosisItem
+from app.api.consult import consult_integrated
+from app.models import ConsultRequest, DrugItem, DiagnosisItem
 
 # Helper for Persistent In-Memory DB
 class PersistentDbEngine(DrugDbEngine):
@@ -59,10 +60,13 @@ async def test_etl_to_consult_integration(mocker):
     persistent_db = PersistentDbEngine()
     
     # 2. Patch global 'db' in app modules to use our persistent instance
-    # Note: process_raw_log uses 'app.service.etl_service.db'
-    # consult_integrated uses 'app.api.consult.db'
-    mocker.patch("app.service.etl_service.db", persistent_db)
-    mocker.patch("app.api.consult.db", persistent_db)
+    # Patch sqlite3.connect in ETL service to use our persistent connection
+    mocker.patch("app.service.etl_service.sqlite3.connect", side_effect=lambda *args, **kwargs: persistent_db.get_connection())
+    
+    # Patch consultation_service in app.api.consult with a new instance using our persistent DB
+    from app.service.consultation_service import ConsultationService
+    new_service = ConsultationService(db_core=persistent_db)
+    mocker.patch("app.api.consult.consultation_service", new_service)
     
     # Also patch app.services.DrugDbEngine to return our instance if anyone instantiates it new?
     # Not needed if we patch the specific variable references.
@@ -114,18 +118,21 @@ async def test_etl_to_consult_integration(mocker):
     )
     
     # Mock AI to control fallback
-    mock_ai_response = {
-        "results": [
-            {
-                "id": "d1",
-                "drug_name": "Panadol Integration",
-                "source": "AI_GENERATED", 
-                "treatment_type": "SUPPORTIVE",
-                "original_name": "Panadol Integration"
-            }
-        ]
-    }
-    mocker.patch("app.api.consult.analyze_treatment_group", return_value=mock_ai_response)
+    # Mock AI to control fallback
+    # Mock AI to control fallback
+    mock_ai_response = [
+        {
+            "id": "d1",
+            "name": "Panadol Integration",
+            "validity": "valid",
+            "role": "Main Drug",
+            "explanation": "AI Generated explanation",
+            "source": "AI_GENERATED", 
+            "treatment_type": "SUPPORTIVE", 
+            "original_name": "Panadol Integration"
+        }
+    ]
+    mocker.patch("app.service.consultation_service.ConsultationService._call_ai_fallback", new_callable=AsyncMock, return_value=mock_ai_response)
     
     response = await consult_integrated(payload)
     

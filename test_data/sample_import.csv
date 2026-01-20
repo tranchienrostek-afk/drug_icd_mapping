@@ -1,0 +1,4 @@
+Tên thuốc,Mã ICD (Chính),Bệnh phụ,Phân loại,Feedback,Chẩn đoán ra viện,Lý do kê đơn
+Paracetamol 500mg,R51 - Đau đầu,,drug,valid,Nhức đầu kéo dài,Giảm đau hạ sốt
+Amoxicillin 250mg,J02 - Viêm họng cấp,B97.4 - Vi rút hợp bào,support,,Viêm họng mủ,Kháng sinh điều trị
+Omeprazole 20mg,K21 - Trào ngược dạ dày,,support,valid,Đau thượng vị,Ức chế acid

@@ -1,0 +1,3 @@
+Tên thuốc,Mã ICD (Chính),Bệnh phụ,Phân loại,Feedback,Chẩn đoán ra viện,Lý do kê đơn
+Panadol,J00 - Cảm cúm,{},valid,valid,Sốt virus,Đau đầu
+Efferalgan,R50 - Sốt,{"uuid": {"ma": "J06", "ten": "Nhiễm trùng hô hấp"}},drug,valid,,Hạ sốt

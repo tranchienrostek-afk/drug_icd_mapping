@@ -101,16 +101,46 @@ class DrugItem(BaseModel):
     id: str
     name: str
 
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "id": "d1",
+            "name": "Paracetamol 500mg"
+        }
+    })
+
 class DiagnosisItem(BaseModel):
     code: str
     name: str
-    type: str # MAIN / SECONDARY
+    type: str  # MAIN / SECONDARY
+
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "code": "R51",
+            "name": "Đau đầu",
+            "type": "MAIN"
+        }
+    })
 
 class ConsultRequest(BaseModel):
     request_id: str
     items: List[DrugItem]
     diagnoses: List[DiagnosisItem]
     symptom: Optional[str] = None
+
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "request_id": "REQ-001",
+            "items": [
+                {"id": "d1", "name": "Paracetamol 500mg"},
+                {"id": "d2", "name": "Amoxicillin 250mg"}
+            ],
+            "diagnoses": [
+                {"code": "R51", "name": "Đau đầu", "type": "MAIN"},
+                {"code": "J06.9", "name": "Nhiễm trùng đường hô hấp", "type": "SECONDARY"}
+            ],
+            "symptom": "Đau đầu kèm sốt nhẹ"
+        }
+    })
 
 class ConsultResult(BaseModel):
     id: str
@@ -121,19 +151,43 @@ class ConsultResult(BaseModel):
     explanation: str
     source: str
 
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "id": "d1",
+            "name": "Paracetamol 500mg",
+            "category": "drug",
+            "validity": "valid",
+            "role": "Thuốc điều trị chính",
+            "explanation": "Internal KB (AI): Found 150 records. Confidence: 95%",
+            "source": "INTERNAL_KB_AI"
+        }
+    })
+
 class ConsultResponse(BaseModel):
     results: List[ConsultResult]
 
-
     model_config = ConfigDict(json_schema_extra={
         "example": {
-            "ten_thuoc": "Panadol Extra",
-            "so_dang_ky": "VN-12345-67",
-            "hoat_chat": "Paracetamol, Caffeine",
-            "chi_dinh": "Giảm đau, hạ sốt",
-            "cong_ty_san_xuat": "GSK",
-            "tu_dong_nghia": "Panadol đỏ, Thuốc giảm đau đầu",
-            "modified_by": "admin"
+            "results": [
+                {
+                    "id": "d1",
+                    "name": "Paracetamol 500mg",
+                    "category": "drug",
+                    "validity": "valid",
+                    "role": "Thuốc điều trị chính",
+                    "explanation": "Expert Verified: Classified as 'Thuốc điều trị chính' by Medical Reviewer.",
+                    "source": "INTERNAL_KB_TDV"
+                },
+                {
+                    "id": "d2",
+                    "name": "Amoxicillin 250mg",
+                    "category": "drug",
+                    "validity": "valid",
+                    "role": "Thuốc hỗ trợ",
+                    "explanation": "AI Suggestion: Phù hợp với nhiễm trùng đường hô hấp",
+                    "source": "EXTERNAL_AI"
+                }
+            ]
         }
     })
 

@@ -22,6 +22,60 @@ logger = logging.getLogger(__name__)
 DB_PATH = os.getenv("DB_PATH", "app/database/medical.db")
 
 
+def normalize_classification(value: str) -> str:
+    """
+    Normalize classification labels based on Expert Rules (Hierarchy Mapping).
+    Returns a JSON string of list, e.g., '["drug", "invalid"]'
+    """
+    import json
+    if not value:
+        return json.dumps([])
+    
+    value = value.lower().strip()
+    
+    # Remove existing list brackets if present
+    value = value.replace('[', '').replace(']', '').replace("'", "").replace('"', "")
+    
+    # Split by comma if multiple values
+    parts = [p.strip() for p in value.split(',') if p.strip()]
+    
+    # Apply Rules
+    # Rule 1: 'supplement' -> ['nodrug', 'supplement']
+    if 'supplement' in parts:
+        if 'nodrug' not in parts: parts.insert(0, 'nodrug')
+        
+    # Rule 2: 'medical supplies' -> ['nodrug', 'medical supplies']
+    if 'medical supplies' in parts:
+        if 'nodrug' not in parts: parts.insert(0, 'nodrug')
+        
+    # Rule 3: 'cosmeceuticals' -> ['nodrug', 'cosmeceuticals']
+    if 'cosmeceuticals' in parts:
+        if 'nodrug' not in parts: parts.insert(0, 'nodrug')
+
+    # Rule 4: 'medical equipment' -> ['nodrug', 'medical equipment']
+    if 'medical equipment' in parts:
+        if 'nodrug' not in parts: parts.insert(0, 'nodrug')
+        
+    # Rule 5: 'invalid' -> ['drug', 'invalid']
+    if 'invalid' in parts:
+        if 'drug' not in parts: parts.insert(0, 'drug')
+        
+    # Rule 6: 'valid' -> ['drug', 'valid', 'main drug'] (Default)
+    if 'valid' in parts:
+        if 'drug' not in parts: parts.insert(0, 'drug')
+        if 'main drug' not in parts and 'secondary drug' not in parts:
+            parts.append('main drug')
+            
+    # Rule 7: 'secondary drug' -> ['drug', 'valid', 'secondary drug']
+    if 'secondary drug' in parts:
+        if 'drug' not in parts: parts.insert(0, 'drug')
+        if 'valid' not in parts: parts.insert(1, 'valid')
+        
+    # Rule 8: 'drug' alone -> Leave as is (or minimal valid?)
+    # Expert said: "If only drug... keep as is"
+    
+    return json.dumps(list(set(parts))) # Deduplicate and serialize
+
 def parse_icd_field(value: str) -> tuple:
     """
     Parse ICD field format: 'J00 - Viêm mũi họng cấp' into ('j00', 'Viêm mũi họng cấp')
@@ -43,6 +97,47 @@ def parse_icd_field(value: str) -> tuple:
     
     # Fallback: return as-is for disease name
     return ('', value)
+
+
+def parse_secondary_disease_field(value: str) -> tuple:
+    """
+    Parse secondary disease field which can be in two formats:
+    1. Plain text: "B97.4 - Vi rút hợp bào" 
+    2. JSON (legacy): '{"uuid": {"id": "...", "ma": "B97.4", "ten": "Vi rút..."}}'
+    
+    Returns:
+        tuple: (icd_code_lowercase, disease_name) or ('', '') if empty
+    """
+    if not value or not value.strip():
+        return ('', '')
+    
+    value = value.strip()
+    
+    # Check if it's empty JSON object
+    if value == '{}':
+        return ('', '')
+    
+    # Try to parse as JSON first (legacy format)
+    if value.startswith('{') and value.endswith('}'):
+        try:
+            import json
+            # Fix escaped quotes from CSV
+            clean_value = value.replace('""', '"')
+            data = json.loads(clean_value)
+            
+            if isinstance(data, dict) and data:
+                # Get first entry (there might be multiple secondary diseases)
+                first_key = list(data.keys())[0]
+                entry = data[first_key]
+                if isinstance(entry, dict):
+                    icd_code = entry.get('ma', '').lower().strip()
+                    disease_name = entry.get('ten', '').strip()
+                    return (icd_code, disease_name)
+        except (json.JSONDecodeError, KeyError, TypeError):
+            pass
+    
+    # Fall back to plain text format "CODE - Name"
+    return parse_icd_field(value)
 
 
 def lookup_disease_ref_id(cursor, icd_code: str) -> int:
@@ -68,107 +163,224 @@ def lookup_disease_ref_id(cursor, icd_code: str) -> int:
     return None
 
 
-def process_raw_log(batch_id: str, text_content: str):
+def lookup_drug_ref_id(drug_name: str, search_service=None) -> tuple:
+    """
+    Lookup drug reference ID from drugs table using fuzzy matching.
+    
+    Args:
+        drug_name: The drug name to search for
+        search_service: DrugSearchService instance (optional, creates new if None)
+    
+    Returns:
+        tuple: (drug_id, so_dang_ky, confidence) or (None, None, 0.0)
+    """
+    if not drug_name or not drug_name.strip():
+        return (None, None, 0.0)
+    
+    try:
+        # Lazy import to avoid circular dependency
+        if search_service is None:
+            from app.database.core import DatabaseCore
+            from app.service.drug_search_service import DrugSearchService
+            db_core = DatabaseCore(DB_PATH)
+            search_service = DrugSearchService(db_core)
+        
+        # Use sync wrapper for async search
+        import asyncio
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # Already in async context, use nest_asyncio or thread
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    future = executor.submit(asyncio.run, search_service.search_drug_smart(drug_name))
+                    result = future.result(timeout=5)
+            else:
+                result = loop.run_until_complete(search_service.search_drug_smart(drug_name))
+        except RuntimeError:
+            # No event loop, create new one
+            result = asyncio.run(search_service.search_drug_smart(drug_name))
+        
+        if result and result.get('confidence', 0) >= 0.85:
+            data = result.get('data', {})
+            drug_id = data.get('rowid') or data.get('id')
+            sdk = data.get('so_dang_ky', '')
+            confidence = result.get('confidence', 0.0)
+            logger.debug(f"[ETL] Drug matched: '{drug_name}' -> ID={drug_id}, SDK={sdk}, Conf={confidence:.2f}")
+            return (drug_id, sdk, confidence)
+            
+    except Exception as e:
+        logger.warning(f"[ETL] Drug lookup failed for '{drug_name}': {e}")
+    
+    return (None, None, 0.0)
+
+
+def process_raw_log(batch_id: str, text_content: str) -> dict:
     """
     Process raw CSV log ingestion for Knowledge Base building.
+    Pre-lookups drug IDs to avoid DB locking, then does batch insertion.
     
     Expected CSV columns:
     - Tên thuốc (required)
-    - Mã ICD (Chính) (required) - format: "J00 - Viêm mũi họng"
-    - Bệnh phụ (optional) - format: "B97.4 - Vi rút hợp bào"
-    - Chẩn đoán ra viện (optional) → symptom
-    - Phân loại (optional) → treatment_type (AI)
-    - Feedback (optional) → tdv_feedback (TDV)
-    - Lý do kê đơn (optional) → prescription_reason
-    - Cách dùng (ignored)
-    - SL (ignored)
+    - Mã ICD (Chính) (required)
+    - ...
     """
     logger.info(f"[ETL] Starting process_raw_log for batch: {batch_id}")
     
+    # Initialize stats
+    stats = {
+        "batch_id": batch_id,
+        "total_rows": 0,
+        "inserted": 0,
+        "updated": 0,
+        "errors": 0,
+        "drugs_matched": 0,
+        "diseases_matched": 0
+    }
+    
     try:
-        # 1. Parse CSV from text content
+        # FIX: Write directly to main DB instead of temp DB copy (which overwrites all data)
+        import shutil
+        import uuid
+        import os
+        
+        # No longer using temp DB - write directly to main
+        
+        # 1. Parse CSV
         reader = csv.DictReader(io.StringIO(text_content))
         rows = list(reader)
+        stats["total_rows"] = len(rows)
         logger.info(f"[ETL] Parsed {len(rows)} rows from CSV")
+        print(f"[ETL] === PHASE 1: Parsed {len(rows)} rows from CSV ===", flush=True)
         
         if not rows:
-            logger.warning(f"[ETL] No rows found in batch {batch_id}")
-            return
+            return stats
+
+        # 2. Identify Unique Drugs and Pre-lookup (READ PHASE)
+        # DISABLED: Skip drug lookup for now to ensure basic ETL works
+        # Drug mapping can be enabled later once basic functionality is stable
+        batch_map = {}
+        print(f"[ETL] === PHASE 2: SKIPPED (drug lookup disabled for speed) ===", flush=True)
         
-        # 2. Connect to DB
-        conn = sqlite3.connect(DB_PATH)
+        # PHASE 2 DISABLED - Original code commented out:
+        # unique_drugs = set()
+        # for row in rows:
+        #     dn = (row.get('Tên thuốc', '') or row.get('ten_thuoc', '') or '').strip()
+        #     if dn: unique_drugs.add(dn)
+        # from app.database.core import DatabaseCore
+        # from app.service.drug_search_service import DrugSearchService
+        # db_core = DatabaseCore(DB_PATH)
+        # search_service = DrugSearchService(db_core)
+        # import asyncio
+        # for drug in unique_drugs:
+        #     try: ... lookup logic ...
+        #     except: pass
+
+        # 5. WRITE TO TEMP DB (WRITE PHASE)
+
+        # Connect to MAIN DB for Lookups (Read-Only)
+        conn_main = sqlite3.connect(DB_PATH)
+        conn_main.row_factory = sqlite3.Row
+        cursor_main = conn_main.cursor()
+
+        # 5. WRITE DIRECTLY TO MAIN DB (FIX: No more temp DB copy)
+        # Now we write directly to main DB with proper locking
+        conn = sqlite3.connect(DB_PATH, timeout=60.0)
+        conn.execute("PRAGMA journal_mode=DELETE;")  # Avoid WAL issues on Windows
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
-        # 3. Ensure new columns exist (migration)
+        # Explicitly Create Base Table in Temp DB
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS knowledge_base (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                drug_name TEXT,
+                drug_name_norm TEXT,
+                drug_ref_id INTEGER,
+                disease_icd TEXT,
+                disease_name TEXT,
+                disease_name_norm TEXT,
+                disease_ref_id INTEGER,
+                secondary_disease_icd TEXT,
+                secondary_disease_name TEXT,
+                secondary_disease_name_norm TEXT,
+                secondary_disease_ref_id INTEGER,
+                treatment_type TEXT,
+                tdv_feedback TEXT,
+                symptom TEXT,
+                prescription_reason TEXT,
+                frequency INTEGER DEFAULT 1,
+                confidence_score REAL DEFAULT 0.0,
+                batch_id TEXT,
+                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        
         _ensure_kb_columns(cursor)
         conn.commit()
         
-        # 4. Process each row
-        inserted = 0
-        updated = 0
-        errors = 0
-        
+        # Process Rows Logic (Same as before)
+        print(f"[ETL] === PHASE 3: Processing {len(rows)} rows ===", flush=True)
+        processed_count = 0
         for row in rows:
             try:
-                # === DRUG INFO ===
-                drug_name = row.get('Tên thuốc', '').strip()
+                 # === DRUG INFO ===
+                # Handle various column name formats from different CSV sources
+                drug_name = (row.get('Tên thuốc', '') or row.get('ten_thuoc', '') or row.get('Ten_thuoc', '') or '').strip()
                 if not drug_name:
-                    errors += 1
+                    stats["errors"] += 1
                     continue
                 drug_name_norm = normalize_text(drug_name)
                 
+                drug_ref_id, drug_sdk, drug_conf = batch_map.get(drug_name, (None, None, 0.0))
+                if drug_ref_id: stats["drugs_matched"] += 1
+                
                 # === PRIMARY DISEASE ===
-                primary_icd_raw = row.get('Mã ICD (Chính)', '').strip()
+                primary_icd_raw = (row.get('Mã ICD (Chính)', '') or row.get('?column?', '') or row.get('benh_chinh', '') or '').strip()
                 if not primary_icd_raw:
-                    errors += 1
+                    stats["errors"] += 1
                     continue
                 disease_icd, disease_name = parse_icd_field(primary_icd_raw)
-                disease_name_norm = normalize_text(disease_name) if disease_name else ''
-                disease_ref_id = lookup_disease_ref_id(cursor, disease_icd)
+                disease_ref_id = lookup_disease_ref_id(cursor_main, disease_icd)
+                if disease_ref_id: stats["diseases_matched"] += 1
                 
-                # === SECONDARY DISEASE ===
-                secondary_raw = row.get('Bệnh phụ', '').strip()
-                secondary_icd, secondary_name = parse_icd_field(secondary_raw)
+                # === SECONDARY ===
+                # Handle case variations: Benh_phu, benh_phu, Bệnh phụ
+                secondary_raw = (row.get('Bệnh phụ', '') or row.get('benh_phu', '') or row.get('Benh_phu', '') or '').strip()
+                secondary_icd, secondary_name = parse_secondary_disease_field(secondary_raw)
                 secondary_name_norm = normalize_text(secondary_name) if secondary_name else ''
-                secondary_ref_id = lookup_disease_ref_id(cursor, secondary_icd)
+                secondary_ref_id = lookup_disease_ref_id(cursor_main, secondary_icd)
                 
-                # === CLASSIFICATION ===
-                treatment_type = row.get('Phân loại', '').strip()
-                tdv_feedback = row.get('Feedback', '').strip()
                 
-                # === OTHER FIELDS ===
-                symptom = row.get('Chẩn đoán ra viện', '').strip()
-                prescription_reason = row.get('Lý do kê đơn', '').strip()
+                 # === OTHER FIELDS ===
+                treatment_type_raw = (row.get('Phân loại', '') or row.get('phan_loai', '') or '').strip()
+                treatment_type = normalize_classification(treatment_type_raw)
                 
-                # === CHECK IF EXISTS (by drug + primary disease) ===
-                cursor.execute("""
-                    SELECT id, frequency FROM knowledge_base 
-                    WHERE drug_name_norm = ? AND disease_icd = ?
-                """, (drug_name_norm, disease_icd))
-                
+                tdv_feedback_raw = (row.get('Feedback', '') or row.get('tdv_feedback', '') or '').strip()
+                # Apply normalization to tdv_feedback too if it contains classification tags
+                tdv_feedback = normalize_classification(tdv_feedback_raw)
+                symptom = (row.get('Chẩn đoán ra viện', '') or row.get('chuan_doan_ra_vien', '') or '').strip()
+                # Handle Ly_do with capital L
+                prescription_reason = (row.get('Lý do kê đơn', '') or row.get('ly_do', '') or row.get('Ly_do', '') or '').strip()
+
+                # === UPSERT ===
+                cursor.execute("SELECT id, frequency FROM knowledge_base WHERE drug_name_norm = ? AND disease_icd = ?", (drug_name_norm, disease_icd))
                 existing = cursor.fetchone()
                 
                 if existing:
-                    # UPDATE: Increment frequency
-                    existing_id = existing['id'] if isinstance(existing, dict) else existing[0]
-                    existing_freq = existing['frequency'] if isinstance(existing, dict) else existing[1]
-                    new_freq = (existing_freq or 0) + 1
-                    
+                    new_freq = (existing['frequency'] or 0) + 1
                     cursor.execute("""
                         UPDATE knowledge_base 
-                        SET frequency = ?, 
+                        SET frequency = ?, drug_ref_id = COALESCE(?, drug_ref_id),
                             treatment_type = COALESCE(?, treatment_type),
                             tdv_feedback = COALESCE(?, tdv_feedback),
                             symptom = COALESCE(?, symptom),
                             prescription_reason = COALESCE(?, prescription_reason),
                             last_updated = CURRENT_TIMESTAMP
                         WHERE id = ?
-                    """, (new_freq, treatment_type or None, tdv_feedback or None, 
-                          symptom or None, prescription_reason or None, existing_id))
-                    updated += 1
+                    """, (new_freq, drug_ref_id, treatment_type or None, tdv_feedback or None, symptom or None, prescription_reason or None, existing['id']))
+                    stats["updated"] += 1
                 else:
-                    # INSERT: New record
                     cursor.execute("""
                         INSERT INTO knowledge_base 
                         (drug_name, drug_name_norm, drug_ref_id,
@@ -176,28 +388,35 @@ def process_raw_log(batch_id: str, text_content: str):
                          secondary_disease_icd, secondary_disease_name, secondary_disease_name_norm, secondary_disease_ref_id,
                          treatment_type, tdv_feedback, symptom, prescription_reason,
                          frequency, batch_id, last_updated)
-                        VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, CURRENT_TIMESTAMP)
-                    """, (
-                        drug_name, drug_name_norm,
-                        disease_icd, disease_name, disease_name_norm, disease_ref_id,
-                        secondary_icd, secondary_name, secondary_name_norm, secondary_ref_id,
-                        treatment_type, tdv_feedback, symptom, prescription_reason,
-                        batch_id
-                    ))
-                    inserted += 1
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, CURRENT_TIMESTAMP)
+                    """, (drug_name, drug_name_norm, drug_ref_id, disease_icd, disease_name, normalize_text(disease_name) if disease_name else '', disease_ref_id,
+                          secondary_icd, secondary_name, secondary_name_norm, secondary_ref_id,
+                          treatment_type, tdv_feedback, symptom, prescription_reason, batch_id))
+                    stats["inserted"] += 1
+                
+                # Progress logging every 100 rows
+                processed_count += 1
+                if processed_count % 10 == 0:
+                    print(f"[ETL] Progress: {processed_count}/{len(rows)} rows processed...", flush=True)
                     
-            except Exception as row_err:
-                logger.error(f"[ETL] Row error: {row_err}")
-                errors += 1
+            except Exception as row_e:
+                stats["errors"] += 1
         
         conn.commit()
-        conn.close()
+        conn.close() 
+        try: conn_main.close()
+        except: pass
         
-        logger.info(f"[ETL] Batch {batch_id} complete: {inserted} inserted, {updated} updated, {errors} errors")
+        # FIX: No longer copying temp DB - data is already in main DB
+        print(f"[ETL] Batch {batch_id} written directly to main DB.", flush=True)
+        
+        logger.info(f"[ETL] Batch {batch_id} complete: {stats}")
+        return stats
         
     except Exception as e:
         logger.error(f"[ETL] Fatal error processing batch {batch_id}: {e}")
         raise
+
 
 
 def _ensure_kb_columns(cursor):

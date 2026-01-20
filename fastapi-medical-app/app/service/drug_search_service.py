@@ -28,7 +28,7 @@ class DrugSearchService:
         cursor = conn.cursor()
         try:
             # Load verified drugs with SDK
-            cursor.execute("SELECT rowid, ten_thuoc, so_dang_ky, search_text FROM drugs WHERE is_verified=1 AND so_dang_ky IS NOT NULL AND so_dang_ky != ''")
+            cursor.execute("SELECT id, ten_thuoc, so_dang_ky, search_text FROM drugs WHERE is_verified=1 AND so_dang_ky IS NOT NULL AND so_dang_ky != ''")
             rows = cursor.fetchall()
             self.drug_cache = [dict(row) for row in rows]
             
@@ -42,9 +42,9 @@ class DrugSearchService:
         finally:
             conn.close()
 
-    async def search_drug_smart(self, query_name: str):
+    def search_drug_smart_sync(self, query_name: str):
         """
-        Multistage Search:
+        Multistage Search (Synchronous Implementation):
         1. Exact Match (100%)
         2. Partial/Fuzzy SQL Match (95%)
         3. Vector/Semantic Match (90%)
@@ -92,7 +92,7 @@ class DrugSearchService:
                          match, score, idx = fuzzy_res
                          if score >= 85.0:
                              match_data = self.drug_cache[idx]
-                             cursor.execute("SELECT * FROM drugs WHERE rowid = ?", (match_data['rowid'],))
+                             cursor.execute("SELECT * FROM drugs WHERE id = ?", (match_data['id'],))
                              full_row = cursor.fetchone()
                              if full_row:
                                  return {"data": dict(full_row), "confidence": 0.88, "source": f"Database (Fuzzy {score:.1f})"}
@@ -110,7 +110,7 @@ class DrugSearchService:
                     
                     if best_score > 0.75:
                         match_data = self.drug_cache[best_idx]
-                        cursor.execute("SELECT * FROM drugs WHERE rowid = ?", (match_data['rowid'],))
+                        cursor.execute("SELECT * FROM drugs WHERE id = ?", (match_data['id'],))
                         full_row = cursor.fetchone()
                         if full_row:
                              return {"data": dict(full_row), "confidence": 0.90, "source": f"Database (Vector {best_score:.2f})"}
@@ -118,6 +118,10 @@ class DrugSearchService:
             return None
         finally:
             conn.close()
+
+    async def search_drug_smart(self, query_name: str):
+        """Async wrapper for smart search"""
+        return self.search_drug_smart_sync(query_name)
 
     def search(self, query):
         """Legacy Search for FTS (Autocomplete/Simple Search)"""

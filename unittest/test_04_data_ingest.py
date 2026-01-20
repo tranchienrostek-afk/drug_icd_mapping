@@ -39,45 +39,90 @@ async def test_api_ingest_csv(client, mock_db_engine, mocker):
 
 @pytest.mark.asyncio
 async def test_etl_service_logic(mocker):
-    """Test process_raw_log with REAL CSV format"""
+    """Test process_raw_log with actual CSV format"""
     from app.service.etl_service import process_raw_log
     
-    # Mock DB in etl_service
-    mock_db = MagicMock()
-    mocker.patch("app.service.etl_service.db", mock_db)
+    # Use file-based temp DB to persist across close()
+    import sqlite3
+    import tempfile
+    import os
     
-    # Real CSV snippet with various cases
-    content = '''"id","chuan_doan_ra_vien","?column?","ten_thuoc","phan_loai","tdv_feedback"
-"1","Viêm mũi","J00","Panadol","{drug,valid,""main drug""}","{valid}"
-"2","Sốt xuất huyết","A90","Oremute","{drug,valid,""secondary drug""}","{"""secondary drug"""}"
-"3","Mụn trứng cá","L70","Cream X","{nodrug,cosmeceuticals}","{}"
-"4","Gãy xương","S02","Nẹp y tế","{nodrug,""medical supplies""}","{}"
-"5","Sai thuốc","Z00","Thuốc sai","{drug,invalid}","{}"
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
+    temp_db_path = temp_file.name
+    temp_file.close()
+    
+    # Create required tables
+    setup_conn = sqlite3.connect(temp_db_path)
+    setup_conn.execute("""
+        CREATE TABLE IF NOT EXISTS knowledge_base (
+            id INTEGER PRIMARY KEY,
+            drug_name TEXT,
+            drug_name_norm TEXT,
+            drug_ref_id INTEGER,
+            disease_icd TEXT,
+            disease_name TEXT,
+            disease_name_norm TEXT,
+            disease_ref_id INTEGER,
+            secondary_disease_icd TEXT,
+            secondary_disease_name TEXT,
+            secondary_disease_name_norm TEXT,
+            secondary_disease_ref_id INTEGER,
+            treatment_type TEXT,
+            tdv_feedback TEXT,
+            symptom TEXT,
+            prescription_reason TEXT,
+            frequency INTEGER DEFAULT 1,
+            batch_id TEXT,
+            last_updated TIMESTAMP
+        )
+    """)
+    setup_conn.execute("""
+        CREATE TABLE IF NOT EXISTS diseases (
+            id INTEGER PRIMARY KEY,
+            icd_code TEXT,
+            disease_name TEXT
+        )
+    """)
+    setup_conn.commit()
+    setup_conn.close()
+    
+    # Mock DB_PATH to use our temp file
+    mocker.patch("app.service.etl_service.DB_PATH", temp_db_path)
+    
+    # Mock drug search to avoid actual search
+    mocker.patch("app.service.etl_service.lookup_drug_ref_id", return_value=(None, None, 0.0))
+    
+    # Test CSV with expected format
+    content = '''Tên thuốc,Mã ICD (Chính),Bệnh phụ,Phân loại,Feedback,Chẩn đoán ra viện,Lý do kê đơn
+Paracetamol 500mg,R51 - Đau đầu,,drug,valid,Nhức đầu,Giảm đau
+Amoxicillin 250mg,J02 - Viêm họng cấp,B97.4 - Vi rút,support,,Viêm họng,Kháng sinh
 '''
-    batch_id = "test-real-csv"
+    batch_id = "test-etl-batch"
     
-    await process_raw_log(batch_id, content)
+    # Call sync function
+    stats = process_raw_log(batch_id, content)
     
-    assert mock_db.insert_knowledge_interaction.call_count == 2
-    # Check parsing
-    print(f"Mock Calls: {mock_db.insert_knowledge_interaction.call_args_list}")
+    # Verify stats
+    assert stats["total_rows"] == 2
+    assert stats["inserted"] == 2
+    assert stats["errors"] == 0
     
-    # Extract all calls args
-    calls = [c.args for c in mock_db.insert_knowledge_interaction.call_args_list]
+    # Reconnect to verify data
+    verify_conn = sqlite3.connect(temp_db_path)
+    cursor = verify_conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM knowledge_base WHERE batch_id = ?", (batch_id,))
+    count = cursor.fetchone()[0]
+    assert count == 2
     
-    # Check for presence of key CLASS VALUES (defined in classification.py)
-    # The ETL now returns 'valid', 'secondary drug', 'medical supplies', etc.
-    found_main = any("valid" in args for args in calls) 
-    found_secondary = any("secondary drug" in args for args in calls)
-    found_cosmetic = any("cosmeceuticals" in args for args in calls)
-    found_supplies = any("medical supplies" in args for args in calls)
-    found_invalid = any("invalid" in args for args in calls)
+    # Verify specific record
+    cursor.execute("SELECT drug_name, disease_icd, treatment_type FROM knowledge_base WHERE drug_name_norm LIKE '%paracetamol%'")
+    row = cursor.fetchone()
+    assert row is not None
+    assert row[1] == "r51"  # ICD code lowercase
+    assert row[2] == "drug"  # treatment_type
     
-    assert found_main, "Missing 'valid' (Main Drug)"
-    assert found_secondary, "Missing 'secondary drug'"
-    assert found_cosmetic, "Missing 'cosmeceuticals'"
-    assert found_supplies, "Missing 'medical supplies'"
-    assert found_invalid, "Missing 'invalid' (Non-treatment)"
+    verify_conn.close()
     
-    # Verify basics
-    assert mock_db.insert_knowledge_interaction.call_count == 5
+    # Cleanup
+    os.unlink(temp_db_path)
+

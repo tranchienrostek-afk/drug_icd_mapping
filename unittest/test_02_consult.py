@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, AsyncMock
 
 @pytest.mark.asyncio
 async def test_consult_kb_hit(client, mock_db_engine):
@@ -47,18 +47,17 @@ async def test_consult_ai_fallback(client, mock_db_engine, mocker):
     mock_cursor.fetchone.return_value = None # No KB entry
     
     # 2. Mock AI Service
-    mock_ai = mocker.patch("app.api.consult.analyze_treatment_group")
-    mock_ai.return_value = {
-        "status": "success",
-        "results": [
-            {
-                "disease": "Headache",
-                "medications": [
-                    ["Paracetamol (VN-SDK)", "Good for headache"]
-                ]
-            }
-        ]
-    }
+    # 2. Mock AI Service
+    mocker.patch("app.service.consultation_service.ConsultationService._call_ai_fallback", new_callable=AsyncMock, return_value=[
+        {
+            "id": "d1",
+            "name": "Paracetamol",
+            "validity": "valid",
+            "role": "Main Drug",
+            "explanation": "Good for headache",
+            "source": "EXTERNAL_AI"
+        }
+    ])
     
     payload = {
         "request_id": "TEST-02",
