@@ -1,0 +1,34 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to Server via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: 22
+          script: |
+            set -e
+            cd /root/workspace/drug_icd_mapping/fastapi-medical-app
+            
+            echo "1. Pulling latest code..."
+            git pull origin main
+            
+            echo "2. Rebuilding Container..."
+            cp Dockerfile.prod Dockerfile
+            docker-compose up -d --build --no-deps web
+            
+            echo "3. Pruning old images..."
+            docker image prune -f
+            
+            echo ">>> DEPLOYMENT SUCCESSFUL <<<"
+            docker-compose ps
