@@ -69,6 +69,10 @@
                 <button class="nav-link" id="staging-tab" data-bs-toggle="tab" data-bs-target="#staging" type="button"
                     role="tab">🚧 Kiểm Duyệt (Staging)</button>
             </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="system-tab" data-bs-toggle="tab" data-bs-target="#system" type="button"
+                    role="tab" onclick="loadPage('system')">📈 System Status</button>
+            </li>
         </ul>
 
         <!-- Tab Content -->
@@ -84,6 +88,7 @@
                     <div class="col-md-7 text-end">
                         <button class="btn btn-primary me-2" onclick="loadData('drugs')">Tìm kiếm</button>
                         <button class="btn btn-success" onclick="openDrugModal()">+ Thêm Thuốc</button>
+                        <span class="ms-2 fw-bold text-secondary">Tổng: <span id="total-drugs">0</span></span>
                     </div>
                 </div>
 
@@ -116,6 +121,7 @@
                     <div class="col-md-7 text-end">
                         <button class="btn btn-primary me-2" onclick="loadData('diseases')">Tìm kiếm</button>
                         <button class="btn btn-success" onclick="openDiseaseModal()">+ Thêm Bệnh</button>
+                        <span class="ms-2 fw-bold text-secondary">Tổng: <span id="total-diseases">0</span></span>
                     </div>
                 </div>
 
@@ -146,17 +152,20 @@
                     <div class="col-md-6 text-end">
                         <button class="btn btn-primary me-2" onclick="loadData('links')">Tìm kiếm</button>
                         <button class="btn btn-success" onclick="openLinkModal()">+ Thêm Liên Kết</button>
+                        <span class="ms-2 fw-bold text-secondary">Tổng: <span id="total-links">0</span></span>
                     </div>
                 </div>
 
                 <table class="table table-striped table-hover table-bordered">
                     <thead class="table-dark">
                         <tr>
-                            <th>Thuốc (SDK)</th>
-                            <th>Bệnh (ICD)</th>
-                            <th>Ghi Chú Điều Trị</th>
-                            <th>Trạng Thái</th>
-                            <th style="width: 100px;">Thao tác</th>
+                            <th>Thuốc (Drug)</th>
+                            <th>Bệnh (Disease)</th>
+                            <th>Bệnh Phụ & Chẩn đoán</th>
+                            <th>Phân Loại & Lý do</th>
+                            <th class="text-center" style="width: 80px;">Tần suất</th>
+                            <th class="text-center" style="width: 100px;">Trạng Thái</th>
+                            <th class="text-center" style="width: 80px;">Thao tác</th>
                         </tr>
                     </thead>
                     <tbody id="table-links-body"></tbody>
@@ -188,6 +197,40 @@
                     </thead>
                     <tbody id="table-staging-body"></tbody>
                 </table>
+            </div>
+
+            <!-- SYSTEM STATUS TAB -->
+            <div class="tab-pane fade" id="system" role="tabpanel">
+                <div class="d-flex justify-content-between mb-3 align-items-center">
+                    <h4 class="text-primary">📊 Dashboard & System Health</h4>
+                    <button class="btn btn-primary btn-sm" onclick="loadData('system')">🔄 Refresh</button>
+                </div>
+
+                <!-- API Cards -->
+                <div class="row mb-4" id="api-stats-container">
+                    <div class="col text-center py-5">
+                        <div class="spinner-border text-secondary"></div>
+                    </div>
+                </div>
+
+                <!-- Ingestion History -->
+                <div class="card">
+                    <div class="card-header bg-light fw-bold">📥 Lịch Sử Import (CSV Batches)</div>
+                    <div class="card-body p-0">
+                        <table class="table table-bordered table-striped mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Batch ID</th>
+                                    <th>Thời gian Hoàn Thành</th>
+                                    <th class="text-center">Số Dòng</th>
+                                    <th class="text-center">Unique Drugs</th>
+                                    <th class="text-center">Unique Diseases</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-system-body"></tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
 
         </div>
@@ -508,8 +551,8 @@
                 let url;
                 if (type === 'staging') {
                     url = `${STAGING_API}/staging`;
-                    // Staging usually doesn't need pagination for now or handles it differently
-                    // The API returns list directly, not {total, data}
+                } else if (type === 'system') {
+                    url = `${API_BASE}/monitor/stats?days=1`;
                 } else {
                     url = `${API_BASE}/${type}?page=${currentPage[type]}&limit=${PAGE_LIMIT}&search=${encodeURIComponent(currentSearch[type])}`;
                 }
@@ -519,11 +562,30 @@
                 let data;
                 if (type === 'staging') {
                     data = await response.json();
-                    console.log("Staging Data:", data);
-                    renderTable(type, data); // API returns list directly
-                    renderPagination(type, 0, pagination); // No pagination for now
+                    renderTable(type, data);
+                    renderPagination(type, 0, pagination);
+                } else if (type === 'system') {
+                    data = await response.json();
+                    renderSystemStats(data);
                 } else {
                     const result = await response.json();
+
+                    // Update Totals
+                    if (result.total !== undefined) {
+                        if (type === 'diseases') {
+                            const tDiv = document.getElementById('total-diseases');
+                            if (tDiv) tDiv.innerText = result.total;
+                        }
+                        if (type === 'drugs') {
+                            const tDiv = document.getElementById('total-drugs');
+                            if (tDiv) tDiv.innerText = result.total;
+                        }
+                        if (type === 'links') {
+                            const tDiv = document.getElementById('total-links');
+                            if (tDiv) tDiv.innerText = result.total;
+                        }
+                    }
+
                     renderTable(type, result.data);
                     renderPagination(type, result.total, pagination);
                 }
@@ -585,18 +647,68 @@
                 } else if (type === 'links') {
                     const verifiedBadge = item.is_verified
                         ? '<span class="badge bg-success">Verified</span>'
-                        : '<span class="badge bg-warning text-dark">Pending</span>';
-                    const drugDisplay = item.drug_name ? `<b>${item.drug_name}</b><br><small>${item.sdk}</small>` : item.sdk;
-                    const diseaseDisplay = item.disease_name ? `<b>${item.disease_name}</b><br><small>${item.icd_code}</small>` : item.icd_code;
+                        : '<span class="badge bg-secondary">Unverified</span>';
+
+                    // Drug Column
+                    const drugHTML = `
+                        <div class="fw-bold text-primary">${item.drug_name || 'N/A'}</div>
+                        ${item.sdk ? `<small class="text-muted">SDK: ${item.sdk}</small>` : ''}
+                    `;
+
+                    // Disease Column
+                    const diseaseHTML = `
+                        <div class="fw-bold">${item.disease_name || 'N/A'}</div>
+                        <span class="badge bg-info text-dark">${item.icd_code || 'N/A'}</span>
+                    `;
+
+                    // Classification/Note
+                    let classBadge = '<span class="badge bg-secondary">Unknown</span>';
+                    const typeStr = (item.phan_loai || '').toLowerCase();
+
+                    if (typeStr.includes('indicative') || typeStr.includes('main drug') || typeStr.includes('thuốc điều trị')) {
+                        classBadge = '<span class="badge bg-success">Điều trị</span>';
+                    }
+                    else if (typeStr.includes('supportive') || typeStr.includes('secondary drug') || typeStr.includes('thuốc hỗ trợ')) {
+                        classBadge = '<span class="badge bg-info text-dark">Hỗ trợ</span>';
+                    }
+                    else if (typeStr.includes('contraindication') || typeStr.includes('chống chỉ định')) {
+                        classBadge = '<span class="badge bg-danger">Chống chỉ định</span>';
+                    }
+
+                    // Helper to format JSON like strings
+                    const parseFeedback = (str) => {
+                        if (!str) return '';
+                        // Normalize if it looks like JSON array
+                        if (str.startsWith('["')) {
+                            try { return JSON.parse(str).filter(x => x !== 'valid').join(', '); } catch (e) { }
+                        }
+                        return str;
+                    };
+
+                    const classificationHTML = `
+                        <div class="mb-1">${classBadge}</div>
+                        ${item.tdv_feedback ? `<div class="badge bg-warning text-dark border border-dark" title="TDV Feedback">TDV: ${parseFeedback(item.tdv_feedback)}</div>` : ''}
+                        ${item.prescription_reason ? `<div class="x-small text-muted mt-1" title="Lý do kê đơn">📝 ${item.prescription_reason}</div>` : ''}
+                        ${item.treatment_note ? `<div class="x-small text-muted mt-1"><em>"${item.treatment_note}"</em></div>` : ''}
+                    `;
+
+                    const secondaryInfo = `
+                        ${item.symptom ? `<div class="text-danger x-small mb-1">🤒 ${item.symptom}</div>` : ''}
+                        ${item.secondary_disease_icd ? `<div class="x-small text-muted">Bệnh phụ: <strong>${item.secondary_disease_icd}</strong> - ${item.secondary_disease_name || ''}</div>` : ''}
+                    `;
 
                     html += `
                 <tr>
-                    <td>${drugDisplay}</td>
-                    <td>${diseaseDisplay}</td>
-                    <td><span class="truncate-text" title="${item.treatment_note}">${item.treatment_note || ''}</span></td>
-                    <td>${verifiedBadge}</td>
-                    <td>
-                        <button class="btn btn-sm btn-danger" onclick="deleteLink('${item.sdk}', '${item.icd_code}')">Xóa</button>
+                    <td>${drugHTML}</td>
+                    <td>${diseaseHTML}</td>
+                    <td>${secondaryInfo}</td>
+                    <td>${classificationHTML}</td>
+                    <td class="text-center fw-bold fs-5 text-secondary">${item.frequency || 1}</td>
+                    <td class="text-center">${verifiedBadge}</td>
+                    <td class="text-center">
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteLink('${item.sdk || ''}', '${item.icd_code}')" title="Xóa liên kết">
+                           🗑️
+                        </button>
                     </td>
                 </tr>
             `;
@@ -628,6 +740,70 @@
                         </tr>
                    `;
                 }
+            });
+            tableBody.innerHTML = html;
+        }
+
+        // --- SYSTEM STATS RENDER ---
+        function renderSystemStats(data) {
+            const api = data.api || {};
+            const ingestion = data.ingestion || [];
+
+            // 1. Render Cards
+            const statsContainer = document.getElementById('api-stats-container');
+            const successRate = api.success_rate || 100;
+            const cardColor = successRate > 95 ? 'success' : (successRate > 80 ? 'warning' : 'danger');
+
+            statsContainer.innerHTML = `
+                <div class="col-md-4">
+                    <div class="card text-center border-primary shadow-sm h-100">
+                        <div class="card-body">
+                            <h5 class="card-title text-muted">API Requests (24h)</h5>
+                            <p class="display-4 fw-bold text-primary mb-0">${api.total_requests || 0}</p>
+                            <small class="text-muted">Total Consult Calls</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card text-center border-${cardColor} shadow-sm h-100">
+                        <div class="card-body">
+                            <h5 class="card-title text-muted">Success Rate</h5>
+                            <p class="display-4 fw-bold text-${cardColor} mb-0">${successRate}%</p>
+                            <small class="text-muted">200 OK Responses</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card text-center border-info shadow-sm h-100">
+                        <div class="card-body">
+                            <h5 class="card-title text-muted">Avg Latency</h5>
+                            <p class="display-4 fw-bold text-info mb-0">${api.avg_latency || 0}<span class="fs-4">ms</span></p>
+                            <small class="text-muted">Average Response Time</small>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // 2. Render Ingestion Table
+            const tableBody = document.getElementById('table-system-body');
+            if (ingestion.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="5" class="text-center">Chưa có dữ liệu import nào</td></tr>`;
+                return;
+            }
+
+            let html = '';
+            ingestion.forEach(batch => {
+                html += `
+                    <tr>
+                        <td>
+                            <code class="text-dark bg-light px-2 py-1 rounded border">${batch.batch_id || 'N/A'}</code>
+                        </td>
+                        <td>${batch.completed_at || ''}</td>
+                        <td class="text-center fw-bold">${batch.total_rows || 0}</td>
+                        <td class="text-center">${batch.unique_drugs || 0}</td>
+                        <td class="text-center">${batch.unique_diseases || 0}</td>
+                    </tr>
+                `;
             });
             tableBody.innerHTML = html;
         }

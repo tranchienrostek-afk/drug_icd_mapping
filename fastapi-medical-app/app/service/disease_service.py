@@ -111,7 +111,7 @@ class DiseaseService:
             total = cursor.fetchone()['total']
             
             return {
-                "items": items,
+                "data": items,
                 "total": total,
                 "page": page,
                 "limit": limit

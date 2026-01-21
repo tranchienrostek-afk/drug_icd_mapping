@@ -7,36 +7,25 @@ from starlette.requests import Request
 from starlette.responses import Response, StreamingResponse
 from io import BytesIO
 
+from app.database.core import DatabaseCore
+from app.service.monitor_service import MonitorService
+
 class LogMiddleware(BaseHTTPMiddleware):
     def __init__(self, app):
         super().__init__(app)
-        # Log dir is now relative to app/core/middleware.py -> up one level is app/core -> up one is app/ -> up one is root
-        # Original: app/middlewares/logging_middleware.py
-        # app/middlewares/ -> app/ -> root (2 levels up)
-        # New: app/core/middleware.py -> app/core/ -> app/ -> root (2 levels up)
-        # It seems the path calculation os.path.dirname(os.path.dirname(__file__)) works the same if depth is same.
-        self.log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "logs", "logs_api")
-        # Wait, if file is app/core/middleware.py:
-        # dirname -> app/core
-        # dirname -> app/
-        # dirname -> app
-        # root is father of app.
-        # Original:
-        # file: app/middlewares/logging.py
-        # dirname: app/middlewares
-        # dirname: app/
-        # logs is at app/../logs ? No, logs usually at project root.
-        # Let's check original logic: os.path.join(os.path.dirname(os.path.dirname(__file__)), "logs", "logs_api")
-        # if file is app/middlewares/log.py -> dir(file) = app/middlewares -> dir(dir) = app/
-        # join(app/, "logs") -> app/logs.
-        # Is logs inside app/? Usually logs is at root. 
-        # If logs is at root (fastapi-medical-app/logs), then we need one more dirname.
-        # Let's assume logs is at root.
-        # New file: app/core/middleware.py.
-        # dir -> app/core
-        # dir -> app/
-        # So it is the same.
         
+        # Initialize Monitor Service for DB Logging
+        try:
+            # We use a default path or env var. 
+            # Note: Middleware init happens on startup.
+            db_path = os.getenv("DB_PATH", "app/database/medical.db")
+            self.db_core = DatabaseCore(db_path)
+            self.monitor_service = MonitorService(self.db_core)
+        except Exception as e:
+            print(f"LogMiddleware Warning: Could not init MonitorService: {e}")
+            self.monitor_service = None
+
+        self.log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "logs", "logs_api")
         if not os.path.exists(self.log_dir):
             os.makedirs(self.log_dir, exist_ok=True)
 
@@ -131,5 +120,19 @@ class LogMiddleware(BaseHTTPMiddleware):
         try:
             with open(self.get_log_file(), "a", encoding="utf-8") as f:
                 f.write(log_entry)
+            
+            # DB Logging via MonitorService (Async safe?)
+            # Since this is sync method, we just call it. MonitorService is sync for now (uses DB core).
+            if self.monitor_service:
+                # Log everything except health checks and static
+                if request.url.path.startswith("/api/") and "/health" not in request.url.path:
+                    client_ip = request.client.host if request.client else 'Unknown'
+                    self.monitor_service.log_api_request(
+                        endpoint=request.url.path,
+                        method=request.method,
+                        status_code=status,
+                        response_time_ms=duration * 1000, # convert to ms
+                        client_ip=client_ip
+                    )
         except Exception as e:
             print(f"LogMiddleware Error: {e}")

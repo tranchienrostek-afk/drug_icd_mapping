@@ -18,6 +18,7 @@ from app.service.drug_search_service import DrugSearchService
 from app.service.drug_approval_service import DrugApprovalService
 from app.service.ai_consult_service import analyze_treatment_group
 from app.service.disease_service import DiseaseService
+from app.service.monitor_service import MonitorService
 
 load_dotenv()
 
@@ -54,9 +55,8 @@ class DrugDbEngine:
     [DEPRECATED/FACADE]
     This class is now a wrapper around the new modular services:
     - DatabaseCore
-    - DrugRepository
-    - DrugSearchService
     - DrugApprovalService
+    - MonitorService
     
     It is kept for backward compatibility with existing API calls.
     Please refer to `app/service/` for the actual implementation.
@@ -69,6 +69,7 @@ class DrugDbEngine:
         self.repo = DrugRepository(self.db_core)
         self.search_service = DrugSearchService(self.db_core)
         self.approval_service = DrugApprovalService(self.db_core)
+        self.monitor_service = MonitorService(self.db_core)
         
         self.db_path = db_path
         # No longer maintaining state here directly

@@ -130,6 +130,20 @@ class DatabaseCore:
                 )
             """)
 
+            # 6b. API Logs (New v3.0)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS api_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    endpoint TEXT,
+                    method TEXT,
+                    status_code INTEGER,
+                    response_time_ms REAL,
+                    client_ip TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_api_logs_endpoint ON api_logs(endpoint, created_at)")
+
 
             # 7. Knowledge Base (Updated Schema v2.1)
             cursor.execute("""

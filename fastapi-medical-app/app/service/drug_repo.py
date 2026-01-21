@@ -102,34 +102,41 @@ class DrugRepository:
                 search_term = f"%{search.strip()}%"
                 cursor.execute("""
                     SELECT COUNT(*) FROM knowledge_base 
-                    WHERE drug_name_norm LIKE ? OR disease_name_norm LIKE ? OR disease_icd LIKE ?
+                    WHERE (drug_name_norm LIKE ? OR disease_name_norm LIKE ? OR disease_icd LIKE ?)
+                    AND drug_name_norm != '_icd_list_'
                 """, (search_term, search_term, search_term))
                 total = cursor.fetchone()[0]
                 
                 cursor.execute("""
                     SELECT id, drug_ref_id, disease_icd as icd_code, 
                            drug_name_norm as drug_name, disease_name_norm as disease_name, 
-                           treatment_type as phan_loai, frequency
+                           treatment_type as phan_loai, frequency,
+                           tdv_feedback, symptom, prescription_reason,
+                           secondary_disease_icd, secondary_disease_name
                     FROM knowledge_base
-                    WHERE drug_name_norm LIKE ? OR disease_name_norm LIKE ? OR disease_icd LIKE ?
+                    WHERE (drug_name_norm LIKE ? OR disease_name_norm LIKE ? OR disease_icd LIKE ?)
+                    AND drug_name_norm != '_icd_list_'
                     ORDER BY frequency DESC
                     LIMIT ? OFFSET ?
                 """, (search_term, search_term, search_term, limit, offset))
             else:
-                cursor.execute("SELECT COUNT(*) FROM knowledge_base")
+                cursor.execute("SELECT COUNT(*) FROM knowledge_base WHERE drug_name_norm != '_icd_list_'")
                 total = cursor.fetchone()[0]
                 
                 cursor.execute("""
                     SELECT id, drug_ref_id, disease_icd as icd_code, 
                            drug_name_norm as drug_name, disease_name_norm as disease_name, 
-                           treatment_type as phan_loai, frequency
+                           treatment_type as phan_loai, frequency,
+                           tdv_feedback, symptom, prescription_reason,
+                           secondary_disease_icd, secondary_disease_name
                     FROM knowledge_base
+                    WHERE drug_name_norm != '_icd_list_'
                     ORDER BY frequency DESC
                     LIMIT ? OFFSET ?
                 """, (limit, offset))
             
             rows = cursor.fetchall()
-            return {"items": [dict(r) for r in rows], "total": total, "page": page, "limit": limit}
+            return {"data": [dict(r) for r in rows], "total": total, "page": page, "limit": limit}
         finally:
             conn.close()
 

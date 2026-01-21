@@ -64,3 +64,31 @@ def delete_link(sdk: str, icd_code: str):
     if drug_db.delete_link(sdk, icd_code):
         return {"status": "success"}
     raise HTTPException(status_code=404, detail="Delete failed or Link not found")
+
+# --- MONITORING ---
+@router.get("/monitor/stats")
+def get_monitor_stats(days: int = 1):
+    """
+    Get System Stats:
+    - Ingestion Batches (from knowledge_base)
+    - API usage (from api_logs)
+    """
+    try:
+        # DB Engine instance from global scope or dependency
+        # We can reuse drug_db.monitor_service if exposed, or create new.
+        # Ideally, we should add monitor_service to DrugDbEngine or similar wrapper.
+        # But we added it to `DrugDbEngine` in `services.py` already!
+        
+        # In `services.py`, DrugDbEngine now has self.monitor_service
+        monitor = drug_db.monitor_service
+        
+        ingestion_stats = monitor.get_ingestion_stats(limit=50)
+        api_stats = monitor.get_api_stats(days=days)
+        
+        return {
+            "status": "success",
+            "ingestion": ingestion_stats,
+            "api": api_stats
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
