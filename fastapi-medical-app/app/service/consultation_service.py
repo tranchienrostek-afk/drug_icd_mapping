@@ -4,7 +4,7 @@ from typing import List, Dict, Optional
 from app.models import ConsultResult 
 from app.database.core import DatabaseCore
 from app.core.utils import normalize_text
-# from app.services import analyze_treatment_group # We are moving this logic here or to a separate AI module
+from app.service.kb_fuzzy_match_service import KBFuzzyMatchService
 
 class ConsultationService:
     def __init__(self, db_core: DatabaseCore = None):
@@ -12,57 +12,64 @@ class ConsultationService:
             self.db_core = DatabaseCore()
         else:
             self.db_core = db_core
+        
+        # Initialize fuzzy matcher for KB lookups
+        self.kb_matcher = KBFuzzyMatchService(self.db_core)
 
     async def process_integrated_consultation(self, request) -> List[Dict]:
         """
-        Integrated Consultation: Internal KB Only.
+        Integrated Consultation: Internal KB with Fuzzy Matching.
         
         Logic:
         1. Iterate Drug x Diagnosis pairs.
-        2. Normalize inputs.
-        3. Query KB (Priority: TDV > AI).
-        4. Skip if not found.
+        2. Use KBFuzzyMatchService for fuzzy drug name lookup.
+        3. Return TDV > AI classification priority.
         """
         results = []
         
-        # Pre-process diagnoses (Main + Secondary)
-        # Actually, we treat them equally for interaction checking, 
-        # but logically we might want to know which is MAIN.
-        # The query does strict check on disease_icd.
-        
-        # 1. Iterate Inputs
         for item in request.items:
-            # Normalize Drug Name
-            dataset_drug_name = normalize_text(item.name)
             is_resolved = False
             
             for diag in request.diagnoses:
-                # Normalize Disease (ICD Code should be lowercase to match DB)
                 disease_icd = diag.code.strip().lower()
                 
-                # 2. Check KB
-                match = self.check_knowledge_base_strict(dataset_drug_name, disease_icd)
+                # Use fuzzy matching instead of exact
+                match = self.kb_matcher.find_best_match_with_icd(item.name, disease_icd)
                 
                 if match:
+                    # Determine source based on tdv_feedback or treatment_type
+                    if match.get('tdv_feedback') and match['tdv_feedback'].lower() not in ('', 'none', 'null'):
+                        role = self._clean_role_string(match['tdv_feedback'])
+                        source = "INTERNAL_KB_TDV"
+                        explanation = f"Expert Verified: Classified as '{role}' bởi TĐV. (Match: {match['match_method']})"
+                    elif match.get('treatment_type'):
+                        role = self._clean_role_string(match['treatment_type'])
+                        source = "INTERNAL_KB_AI"
+                        explanation = f"Internal KB (AI): Ingested from historical usage. (Match: {match['match_method']})"
+                    else:
+                        continue
+                    
                     results.append({
                         "id": item.id,
                         "name": item.name,
                         "category": "drug",
-                        "validity": match['validity'],
-                        "role": match['role'],
-                        "explanation": match['explanation'],
-                        "source": match['source']
+                        "validity": "valid",
+                        "role": role,
+                        "explanation": explanation,
+                        "source": source,
+                        "match_score": match.get('match_score'),
+                        "matched_name": match.get('drug_name_norm')
                     })
                     is_resolved = True
+                    break  # Found match, stop checking other diagnoses
             
-            # 3. Handle Not Found (Keep in list per user request)
             if not is_resolved:
-                 results.append({
+                results.append({
                     "id": item.id,
                     "name": item.name,
                     "category": "drug",
-                    "validity": "unknown", # Or empty string? User said "trống" but Model requires str
-                    "role": "", 
+                    "validity": "unknown",
+                    "role": "",
                     "explanation": "Không tìm thấy thông tin trong cơ sở dữ liệu.",
                     "source": "INTERNAL_KB_EMPTY"
                 })

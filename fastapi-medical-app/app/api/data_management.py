@@ -33,7 +33,7 @@ def check_ingest_rate_limit():
     LAST_INGEST_TIME = now
 
 def run_etl_with_logging(batch_id: str, text_content: str):
-    """Wrapper to catch and log ETL errors"""
+    """Wrapper to catch and log ETL errors, and refresh KB cache after success."""
     print(f"[DATA] BEFORE ETL execution for batch: {batch_id}", flush=True)
     try:
         print(f"[DATA] Starting ETL for batch: {batch_id}, content length: {len(text_content)}", flush=True)
@@ -45,6 +45,16 @@ def run_etl_with_logging(batch_id: str, text_content: str):
         
         print(f"[DATA] ETL completed for batch {batch_id}: {stats}", flush=True)
         logger.info(f"[DATA] ETL completed for batch {batch_id}: {stats}")
+        
+        # Refresh KB fuzzy match cache after successful ingest
+        try:
+            from app.service.kb_fuzzy_match_service import KBFuzzyMatchService
+            kb_service = KBFuzzyMatchService()
+            kb_service.refresh_cache()
+            print(f"[DATA] KB cache refreshed after batch {batch_id}", flush=True)
+        except Exception as cache_err:
+            print(f"[DATA] KB cache refresh warning: {cache_err}", flush=True)
+            
     except Exception as e:
         print(f"[DATA] ETL ERROR for batch {batch_id}: {e}", flush=True)
         logger.error(f"[DATA] ETL failed for batch {batch_id}: {e}", exc_info=True)
