@@ -119,6 +119,7 @@ def normalize_for_matching(text: str) -> str:
     - Remove Vietnamese accents (to clean ASCII)
     - Keep: a-z, 0-9, space, -, +, %, .
     - Remove others
+    - [NEW] Remove leading zeros from numbers (05ml -> 5ml)
     """
     if not text:
         return ""
@@ -141,6 +142,15 @@ def normalize_for_matching(text: str) -> str:
 
     # 5. Trim spaces
     text = re.sub(r'\s+', ' ', text).strip()
+    
+    # 6. [NEW] Remove leading zeros from numeric parts (05ml -> 5ml, 03 -> 3)
+    # Pattern: match standalone numbers or numbers with units
+    def strip_leading_zeros(match):
+        num = match.group(1).lstrip('0') or '0'  # Keep at least one '0' for just '0'
+        suffix = match.group(2) or ''
+        return num + suffix
+    
+    text = re.sub(r'\b0+(\d+)(ml|mg|mcg|g|iu|ui|l|%)?\b', strip_leading_zeros, text, flags=re.IGNORECASE)
     
     return text
 
