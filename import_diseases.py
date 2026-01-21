@@ -3,7 +3,7 @@ import csv
 import os
 
 DB_PATH = "fastapi-medical-app/app/database/medical.db"
-CSV_PATH = "knowledge for agent/to_database/icd_data.csv"
+CSV_PATH = "icd_data.csv"
 
 def import_diseases():
     print(f"Connecting to {DB_PATH}...")
