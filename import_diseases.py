@@ -1,14 +1,33 @@
 import sqlite3
 import csv
 import os
+import uuid
 
 DB_PATH = "fastapi-medical-app/app/database/medical.db"
 CSV_PATH = "icd_data.csv"
 
 def import_diseases():
+    """
+    Import diseases from icd_data.csv into the 'diseases' table.
+    Schema: id, icd_code, disease_name, chapter_name, slug, search_text, is_active
+    """
     print(f"Connecting to {DB_PATH}...")
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
+    
+    # Ensure table exists (same as in core.py)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS diseases (
+            id TEXT PRIMARY KEY,
+            icd_code TEXT UNIQUE,
+            disease_name TEXT,
+            chapter_name TEXT,
+            slug TEXT,
+            search_text TEXT,
+            is_active TEXT DEFAULT 'active'
+        )
+    """)
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_diseases_icd ON diseases(icd_code)")
     
     print(f"Reading {CSV_PATH}...")
     try:
@@ -18,58 +37,53 @@ def import_diseases():
             rows_to_insert = []
             count = 0
             for line_no, row in enumerate(reader):
-                if not row or len(row) < 16:
+                if not row or len(row) < 17:
                     continue
                 
-                # Inspecting debug_csv.txt:
+                # CSV Column mapping (from debug_csv.txt):
                 # Col 10: ICD
                 # Col 14: Chapter
                 # Col 15: Slug/Norm
                 # Col 16: Name
                 
-                if len(row) < 17:
-                    continue
-
                 icd = row[10].strip()
                 chapter = row[14].strip()
                 name = row[16].strip()
-                slug = row[15].strip()
+                slug = row[15].strip() or name.lower()
                 
                 if not icd or not name:
                     continue
                 
-                # Insert into knowledge_base
+                # Generate UUID for id
+                disease_id = str(uuid.uuid4())
+                
+                # Build search_text
+                search_text = f"{icd} {name} {slug} {chapter}".lower()
+                
                 rows_to_insert.append((
+                    disease_id,
                     icd,
                     name,
-                    slug if slug else name.lower(), # norm
                     chapter,
-                    "_ICD_LIST_", # drug_name
-                    "_icd_list_", # drug_name_norm
-                    0             # frequency
+                    slug,
+                    search_text,
+                    'active'
                 ))
                 count += 1
                 
             print(f"Parsed {count} diseases.")
             
-            query = """
-            INSERT INTO knowledge_base 
-            (disease_icd, disease_name, disease_name_norm, treatment_type, drug_name, drug_name_norm, frequency) 
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            """
+            # Clear existing and insert
+            cursor.execute("DELETE FROM diseases")
+            print(f"Cleared old diseases.")
             
-            # Use executemany. Since we don't have a unique constraint on JUST ICD (likely), 
-            # this might create duplicates if we run multiple times.
-            # But the table likely has no unique constraint on these fields alone.
-            # We should probably check if it exists first? 
-            # Or just DELETE FROM knowledge_base WHERE drug_name = '_ICD_LIST_' before inserting.
-            
-            cursor.execute("DELETE FROM knowledge_base WHERE drug_name = '_ICD_LIST_'")
-            print(f"Deleted {cursor.rowcount} old import rows.")
-            
-            cursor.executemany(query, rows_to_insert)
+            cursor.executemany("""
+                INSERT OR REPLACE INTO diseases 
+                (id, icd_code, disease_name, chapter_name, slug, search_text, is_active)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, rows_to_insert)
             conn.commit()
-            print(f"Inserted {cursor.rowcount} rows.")
+            print(f"Inserted {cursor.rowcount} rows into diseases table.")
             
     except Exception as e:
         print(f"Error: {e}")

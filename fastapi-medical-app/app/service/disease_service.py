@@ -64,7 +64,7 @@ class DiseaseService:
     
     def get_diseases_list(self, page: int = 1, limit: int = 20, search: str = "") -> Dict:
         """
-        Get paginated list of unique diseases from knowledge_base.
+        Get paginated list of diseases from the diseases table.
         """
         conn = self.db_core.get_connection()
         conn.row_factory = dict_factory
@@ -76,23 +76,17 @@ class DiseaseService:
             if search:
                 search_term = f"%{search.lower()}%"
                 cursor.execute("""
-                    SELECT DISTINCT disease_icd as icd_code, disease_name_norm as disease_name, 
-                           treatment_type as chapter_name,
-                           COUNT(*) as frequency
-                    FROM knowledge_base
-                    WHERE LOWER(disease_name_norm) LIKE ? OR disease_icd LIKE ?
-                    GROUP BY disease_icd
-                    ORDER BY frequency DESC
+                    SELECT id, icd_code, disease_name, chapter_name, slug, is_active
+                    FROM diseases
+                    WHERE LOWER(disease_name) LIKE ? OR LOWER(icd_code) LIKE ? OR LOWER(slug) LIKE ?
+                    ORDER BY icd_code ASC
                     LIMIT ? OFFSET ?
-                """, (search_term, search_term, limit, offset))
+                """, (search_term, search_term, search_term, limit, offset))
             else:
                 cursor.execute("""
-                    SELECT DISTINCT disease_icd as icd_code, disease_name_norm as disease_name, 
-                           treatment_type as chapter_name,
-                           COUNT(*) as frequency
-                    FROM knowledge_base
-                    GROUP BY disease_icd
-                    ORDER BY frequency DESC
+                    SELECT id, icd_code, disease_name, chapter_name, slug, is_active
+                    FROM diseases
+                    ORDER BY icd_code ASC
                     LIMIT ? OFFSET ?
                 """, (limit, offset))
             
@@ -101,12 +95,11 @@ class DiseaseService:
             # Get total count
             if search:
                 cursor.execute("""
-                    SELECT COUNT(DISTINCT disease_icd) as total
-                    FROM knowledge_base
-                    WHERE LOWER(disease_name_norm) LIKE ? OR disease_icd LIKE ?
-                """, (search_term, search_term))
+                    SELECT COUNT(*) as total FROM diseases
+                    WHERE LOWER(disease_name) LIKE ? OR LOWER(icd_code) LIKE ? OR LOWER(slug) LIKE ?
+                """, (search_term, search_term, search_term))
             else:
-                cursor.execute("SELECT COUNT(DISTINCT disease_icd) as total FROM knowledge_base")
+                cursor.execute("SELECT COUNT(*) as total FROM diseases")
             
             total = cursor.fetchone()['total']
             

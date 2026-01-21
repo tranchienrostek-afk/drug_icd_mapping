@@ -77,6 +77,21 @@ class DatabaseCore:
             # Ensure FTS Table
             cursor.execute("CREATE VIRTUAL TABLE IF NOT EXISTS drugs_fts USING fts5(ten_thuoc, hoat_chat, cong_ty_san_xuat, search_text)")
 
+            # 0b. Diseases Table (per 02_diseases.md spec)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS diseases (
+                    id TEXT PRIMARY KEY,
+                    icd_code TEXT UNIQUE,
+                    disease_name TEXT,
+                    chapter_name TEXT,
+                    slug TEXT,
+                    search_text TEXT,
+                    is_active TEXT DEFAULT 'active'
+                )
+            """)
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_diseases_icd ON diseases(icd_code)")
+            cursor.execute("CREATE VIRTUAL TABLE IF NOT EXISTS diseases_fts USING fts5(icd_code, disease_name, search_text)")
+
             # 1. Main Drugs Table Updates
             self._migrate_drugs_table(cursor)
 
