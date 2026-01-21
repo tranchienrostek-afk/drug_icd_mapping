@@ -5,6 +5,13 @@ from app.services import DiseaseDbEngine, scrape_icd_web
 router = APIRouter()
 db = DiseaseDbEngine()
 
+@router.get("/")
+async def get_diseases(page: int = 1, limit: int = 20, search: str = ""):
+    """
+    Get list of diseases with pagination and search.
+    """
+    return db.get_diseases_list(page, limit, search)
+
 @router.post("/lookup")
 async def lookup_diseases(payload: DiseaseRequest):
     results = []
