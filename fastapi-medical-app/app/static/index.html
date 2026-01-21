@@ -130,7 +130,8 @@
                         <tr>
                             <th>Mã ICD</th>
                             <th>Tên Bệnh</th>
-                            <th>Chương (Chapter)</th>
+                            <th>Chapter / Phân Loại</th>
+                            <th class="text-center" style="width: 100px;">Tần Suất</th>
                             <th style="width: 120px;">Thao tác</th>
                         </tr>
                     </thead>
@@ -632,11 +633,28 @@
             `;
                 } else if (type === 'diseases') {
                     const itemStr = encodeURIComponent(JSON.stringify(item));
+
+                    // Parse chapter/treatment_type  
+                    let chapterHTML = '';
+                    const rawChapter = item.chapter_name || '';
+                    if (rawChapter.startsWith('[')) {
+                        // It's a JSON array from treatment_type
+                        try {
+                            const parts = JSON.parse(rawChapter);
+                            chapterHTML = parts.map(p => `<span class="badge bg-secondary me-1">${p}</span>`).join('');
+                        } catch (e) {
+                            chapterHTML = `<span class="text-muted">${rawChapter}</span>`;
+                        }
+                    } else {
+                        chapterHTML = rawChapter ? `<span class="badge bg-info text-dark">${rawChapter}</span>` : '<span class="text-muted">-</span>';
+                    }
+
                     html += `
                 <tr>
-                    <td><span class="badge bg-info text-dark">${item.icd_code || 'N/A'}</span></td>
+                    <td><span class="badge bg-primary fs-6">${item.icd_code || 'N/A'}</span></td>
                     <td class="fw-bold">${item.disease_name || 'N/A'}</td>
-                    <td>${item.chapter_name || ''}</td>
+                    <td>${chapterHTML}</td>
+                    <td class="text-center fw-bold fs-5 text-secondary">${item.frequency || 0}</td>
                     <td>
                         <button class="btn btn-sm btn-info text-white" onclick="openDiseaseModal('${item.icd_code}')">Sửa</button>
                         <button class="btn btn-sm btn-danger" onclick="deleteItem('diseases', '${item.rowid}', true)">Xóa</button>
