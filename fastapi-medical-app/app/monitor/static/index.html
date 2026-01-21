@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Service Monitor</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: #2d2d2d;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            color: #00ff88;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .stat-item {
+            padding: 10px;
+            background: #333;
+            border-radius: 5px;
+        }
+
+        .label {
+            font-size: 0.9em;
+            color: #aaa;
+        }
+
+        .value {
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+
+        .status-ok {
+            color: #00ff88;
+        }
+
+        .status-warn {
+            color: #ffcc00;
+        }
+
+        .status-crit {
+            color: #ff4444;
+        }
+
+        #last-updated {
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🏥 System Monitor</h1>
+        <div class="card">
+            <h2>Resources</h2>
+            <div class="stat-grid">
+                <div class="stat-item">
+                    <div class="label">CPU Usage (Core)</div>
+                    <div class="value" id="cpu-val">--%</div>
+                    <div class="label" id="cpu-detail">App: --% / Sys: --%</div>
+                </div>
+                <div class="stat-item">
+                    <div class="label">RAM Usage</div>
+                    <div class="value" id="ram-usage">--%</div>
+                    <div class="label" id="ram-detail">App: 0MB / Total: 0GB</div>
+                </div>
+                <div class="stat-item">
+                    <div class="label">Disk Usage</div>
+                    <div class="value" id="disk-val">--%</div>
+                </div>
+                <div class="stat-item">
+                    <div class="label">Status</div>
+                    <div class="value" id="status-val">Checking...</div>
+                </div>
+            </div>
+            <div id="last-updated">Last Updated: Never</div>
+        </div>
+    </div>
+
+    <script>
+        function formatBytes(bytes, decimals = 2) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+        }
+
+        async function fetchStats() {
+            try {
+                const response = await fetch('/api/v1/monitor/stats');
+                if (!response.ok) throw new Error("API Error");
+                const data = await response.json();
+
+                // CPU
+                const sysCpu = data.system.cpu;
+                const procCpu = data.process.cpu;
+
+                const cpuEl = document.getElementById('cpu-val');
+                // Use System CPU for main indicator (safety), but show App usage below
+                cpuEl.innerText = sysCpu + '%';
+                cpuEl.className = 'value ' + (sysCpu > 90 ? 'status-crit' : (sysCpu > 70 ? 'status-warn' : 'status-ok'));
+                document.getElementById('cpu-detail').innerText = `App: ${procCpu.toFixed(1)}% / Sys: ${sysCpu}%`;
+
+                // RAM
+                const sysRam = data.system.ram;
+                const procRam = data.process.ram;
+
+                const ramEl = document.getElementById('ram-usage');
+                ramEl.innerText = sysRam.percent + '%';
+                ramEl.className = 'value ' + (sysRam.percent > 90 ? 'status-crit' : (sysRam.percent > 70 ? 'status-warn' : 'status-ok'));
+
+                // Detailed comparison: App Usage vs System Total
+                document.getElementById('ram-detail').innerText = `App: ${formatBytes(procRam)} / Total: ${formatBytes(sysRam.total)}`;
+
+                // Disk
+                const disk = data.system.disk;
+                document.getElementById('disk-val').innerText = disk.percent.toFixed(1) + '%';
+
+                // Overall Status
+                const statusEl = document.getElementById('status-val');
+                if (sysCpu > 95 || sysRam.percent > 90) {
+                    statusEl.innerText = 'CRITICAL OVERLOAD';
+                    statusEl.className = 'value status-crit';
+                } else {
+                    statusEl.innerText = 'OPERATIONAL';
+                    statusEl.className = 'value status-ok';
+                }
+
+                document.getElementById('last-updated').innerText = 'Last Updated: ' + new Date().toLocaleTimeString();
+
+            } catch (err) {
+                console.error(err);
+                document.getElementById('status-val').innerText = 'CONNECTION LOST';
+                document.getElementById('status-val').className = 'value status-crit';
+            }
+        }
+
+        // Fetch every 3 seconds
+        fetchStats();
+        setInterval(fetchStats, 3000);
+    </script>
+</body>
+
+</html>

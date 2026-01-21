@@ -1,0 +1,8 @@
+DB SIZE: -rw-r--r-- 1 root root 76K Jan 20 16:51 /root/workspace/drug_icd_mapping/fastapi-medical-app/app/database/medical.db
+DB OUTPUT:
+
+DB STDERR:
+File "<string>", line 11
+    cursor.execute(SELECT
+                  ^
+SyntaxError: '(' was never closed

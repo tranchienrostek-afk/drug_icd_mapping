@@ -9,3 +9,9 @@ services:
       - .:/app
     env_file:
       - .env
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M

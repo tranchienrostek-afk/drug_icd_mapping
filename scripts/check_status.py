@@ -13,14 +13,13 @@ client = paramiko.SSHClient()
 client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 client.connect(HOST, username=USER, password=PASS)
 
-print("--- DOCKER PS (ALL) ---")
-# limit output width to avoid truncation mess
-stdin, stdout, stderr = client.exec_command("docker ps -a --format 'table {{.ID}}\t{{.Image}}\t{{.Status}}\t{{.Names}}'")
-print(stdout.read().decode().strip())
+print("--- WEB CONTAINER STATUS ---")
+stdin, stdout, stderr = client.exec_command("docker ps --filter name=web --format '{{.Names}} | {{.Status}} | {{.Image}}'")
+output = stdout.read().decode().strip()
+print(output if output else "No 'web' container found via filter.")
 
-print("\n--- ACTIVE BUILD PROCESSES ---")
-stdin, stdout, stderr = client.exec_command("ps aux | grep 'docker build' | grep -v grep")
-out = stdout.read().decode().strip()
-print(out if out else "No build process running.")
+print("\n--- ALL CONTAINERS (First 5) ---")
+stdin, stdout, stderr = client.exec_command("docker ps --format '{{.Names}} | {{.Status}}' | head -n 5")
+print(stdout.read().decode().strip())
 
 client.close()
