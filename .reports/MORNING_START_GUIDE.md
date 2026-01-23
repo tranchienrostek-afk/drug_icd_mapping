@@ -1,46 +1,43 @@
 # 🌅 MORNING START GUIDE (Ngày mới năng lượng!)
-**Last Updated:** 2026-01-20 (End of Day)
+**Last Updated:** 2026-01-21 (End of Day)
 
 ## 1. Tình Trạng Hiện Tại (Status)
-Hệ thống **Medical Consultation** đang chạy ổn định trên **Server Dev (10.14.190.28)**.
+Hệ thống **Medical Consultation** đang chạy ổn định. Đã có cơ chế **Fuzzy Matching** thông minh cho Knowledge Base.
 
 | Thành phần | Trạng thái | Ghi chú |
 | :--- | :--- | :--- |
-| **API Server** | 🟢 **RUNNING** | Port 8000. Đã bật CI/CD tự động. |
-| **Database** | 🟢 **LOADED** | Đã nạp full dữ liệu. `check_db` OK. |
-| **Ingest API** | 🟢 **SECURED** | Đã thêm Rate Limit (1 req / 2 phút). |
-| **Consult API** | 🟢 **READY** | Logic: Ưu tiên TDV -> AI Suggestion. |
+| **API Server** | 🟢 **RUNNING** | Đã tích hợp Fuzzy Matching (TF-IDF + RapidFuzz). |
+| **Diseases DB** | 🟢 **MIGRATED** | Đã chuyển sang bảng `diseases` chuẩn (15k+ records). |
+| **KB Cache** | 🟢 **AUTO-REFRESH** | Tự reload cache sau mỗi lần Ingest. |
 
 ## 2. Hôm Qua Bạn Đã Làm Gì? (Yesterday's Wins)
-1.  **Fixed Deploy**: Chuyển sang GitHub Actions Self-Hosted (Runner `Nifi`). Code tự update sau 2 phút khi Push.
-2.  **Fixed ETL**: Sửa logic file CSV, mapping cột `?column?` thành `Tên thuốc` tự động.
-3.  **Security**: Chặn spam API upload dữ liệu.
-4.  **Documentation**: Đã có Swagger UI và Walkthrough đầy đủ.
+1.  **Rebuild Diseases Table**: Xây dựng lại bảng bệnh chuẩn Spec 02, cập nhật frontend chuyên nghiệp.
+2.  **Fuzzy Mapping (BUG-017)**: Triển khai TF-IDF + RapidFuzz cho KB. Giải quyết triệt để lỗi không khớp do chính tả/định dạng.
+3.  **Auto-Refresh Cache**: Đảm bảo dữ liệu mới nạp được nhận diện ngay lập tức mà không cần restart server.
 
 ## 3. Việc Cần Làm Sáng Mai (To-Do List)
 Khi bạn ngồi vào bàn làm việc, hãy:
 
-1.  **Kiểm tra Server**:
-    Mở terminal và chạy lệnh:
+1.  **Kiểm tra Cache Loading**:
+    Mở log server và tìm dòng này:
     ```bash
-    ssh root@10.14.190.28 "docker ps"
+    docker logs fastapi-medical-app-web-1 | grep "KBFuzzyMatch"
     ```
-    *Kỳ vọng: Thấy container `drug_icd_mapping_prod_web_1` đang Up.*
+    *Kỳ vọng: Thấy "[KBFuzzyMatch] Loaded 608 unique drug names from KB".*
 
-2.  **Check Log qua đêm**:
-    Xem có ai spam hay lỗi gì không:
+2.  **Test Fuzzy Match đầu ngày**:
+    Thử một ca khó:
     ```bash
-    ssh root@10.14.190.28 "docker logs --tail 100 drug_icd_mapping_prod_web_1"
+    curl -X POST http://localhost:8000/api/v1/consult_integrated -d '{"diagnoses":[{"code":"K60.0"}],"items":[{"name":"proct 03 05ml"}]}'
     ```
+    *Kỳ vọng: `source: INTERNAL_KB_TDV` và `match: fuzzy(96%)`.*
 
-3.  **Tiếp tục Task 1.3**:
-    Mục tiêu tiếp theo trong `task.md` là **Centralized Logging**.
-    *   Nghiên cứu cách gom log từ các Scraper về một chỗ (ELK Stack hoặc đơn giản là file log tập trung).
+3.  **Tiếp tục Task 1.3 - Knowledge Graph**:
+    Nghiên cứu cách liên kết `diseases.id` với `knowledge_base.disease_icd` để tạo đồ thị quan hệ thuốc-bệnh.
 
-## 4. Tài Liệu Cần Đọc (Nếu quên)
--   `walkthrough.md`: Hướng dẫn sử dụng hệ thống.
--   `task.md`: Danh sách công việc còn lại.
--   `.reports/HANDOVER_REPORT_2026_01_20.md`: Báo cáo chi tiết kỹ thuật.
+## 4. Tài Liệu Cần Đọc (Handover)
+-   `walkthrough.md`: Hướng dẫn các tính năng mới nhất (Fuzzy match).
+-   `.reports/HANDOVER_REPORT_LEAD_DEVELOPER_2026_01_21.md`: Tài liệu "sống còn" cho developer.
 
 ---
 **Chúc bạn một ngày làm việc hiệu quả! ☕**

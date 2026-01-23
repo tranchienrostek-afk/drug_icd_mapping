@@ -1,0 +1,251 @@
+{
+    "request_id": "req-advanced-020",
+    "claims": [
+        {
+            "id": "clm-201",
+            "service_name": "Augmentin",
+            "description": "Kháng sinh",
+            "amount": 185000
+        },
+        {
+            "id": "clm-202",
+            "service_name": "Thuốc giảm đau",
+            "description": "Giảm đau",
+            "amount": 30000
+        },
+        {
+            "id": "clm-203",
+            "service_name": "Vitamin B tổng hợp",
+            "description": "Vitamin B",
+            "amount": 47000
+        },
+        {
+            "id": "clm-204",
+            "service_name": "Men tiêu hóa sống",
+            "description": "Men tiêu hóa",
+            "amount": 35000
+        },
+        {
+            "id": "clm-205",
+            "service_name": "Thuốc ho thảo dược",
+            "description": "Ho",
+            "amount": 68000
+        },
+        {
+            "id": "clm-206",
+            "service_name": "Thuốc dạ dày",
+            "description": "Bao tử",
+            "amount": 65000
+        },
+        {
+            "id": "clm-207",
+            "service_name": "Thuốc dị ứng",
+            "description": "Dị ứng",
+            "amount": 18000
+        },
+        {
+            "id": "clm-208",
+            "service_name": "Vitamin PP",
+            "description": "Vitamin",
+            "amount": 22000
+        },
+        {
+            "id": "clm-209",
+            "service_name": "Thuốc cảm",
+            "description": "Cảm cúm",
+            "amount": 30000
+        },
+        {
+            "id": "clm-210",
+            "service_name": "Canxi",
+            "description": "Canxi",
+            "amount": 90000
+        },
+        {
+            "id": "clm-211",
+            "service_name": "Alpha Choay",
+            "description": "Phù nề",
+            "amount": 60000
+        },
+        {
+            "id": "clm-212",
+            "service_name": "Vitamin E tổng hợp",
+            "description": "Vitamin E",
+            "amount": 55000
+        },
+        {
+            "id": "clm-213",
+            "service_name": "Men vi sinh",
+            "description": "Men vi sinh",
+            "amount": 36000
+        },
+        {
+            "id": "clm-214",
+            "service_name": "Paracetamol",
+            "description": "Hạ sốt",
+            "amount": 12000
+        },
+        {
+            "id": "clm-215",
+            "service_name": "Thuốc tiêu chảy",
+            "description": "Tiêu chảy",
+            "amount": 38000
+        },
+        {
+            "id": "clm-216",
+            "service_name": "Vitamin C",
+            "description": "Vitamin C",
+            "amount": 25000
+        },
+        {
+            "id": "clm-217",
+            "service_name": "Thuốc ho trẻ em",
+            "description": "Ho",
+            "amount": 70000
+        },
+        {
+            "id": "clm-218",
+            "service_name": "Thuốc bổ não",
+            "description": "Bổ não",
+            "amount": 120000
+        },
+        {
+            "id": "clm-219",
+            "service_name": "Cefixim",
+            "description": "Kháng sinh",
+            "amount": 98000
+        },
+        {
+            "id": "clm-220",
+            "service_name": "Vitamin B2",
+            "description": "Vitamin B2",
+            "amount": 20000
+        }
+    ],
+    "medicines": [
+        {
+            "id": "med-201",
+            "service_name": "Amoxicillin + Clavulanate 875/125mg",
+            "description": "Kháng sinh",
+            "amount": 180000
+        },
+        {
+            "id": "med-202",
+            "service_name": "Panadol Extra",
+            "description": "Giảm đau",
+            "amount": 32000
+        },
+        {
+            "id": "med-203",
+            "service_name": "Vitamin B1 B6 B12",
+            "description": "Vitamin B",
+            "amount": 47000
+        },
+        {
+            "id": "med-204",
+            "service_name": "Probiotic capsules",
+            "description": "Men tiêu hóa",
+            "amount": 36000
+        },
+        {
+            "id": "med-205",
+            "service_name": "Prospan Syrup",
+            "description": "Ho",
+            "amount": 72000
+        },
+        {
+            "id": "med-206",
+            "service_name": "Omeprazole 20mg",
+            "description": "Dạ dày",
+            "amount": 45000
+        },
+        {
+            "id": "med-207",
+            "service_name": "Loratadine",
+            "description": "Dị ứng",
+            "amount": 20000
+        },
+        {
+            "id": "med-208",
+            "service_name": "Niacin",
+            "description": "Vitamin PP",
+            "amount": 22000
+        },
+        {
+            "id": "med-209",
+            "service_name": "Cold & Flu Tablets",
+            "description": "Cảm cúm",
+            "amount": 30000
+        },
+        {
+            "id": "med-210",
+            "service_name": "Calcium D3",
+            "description": "Canxi",
+            "amount": 88000
+        },
+        {
+            "id": "med-211",
+            "service_name": "Alpha Chymotrypsin",
+            "description": "Phù nề",
+            "amount": 60000
+        },
+        {
+            "id": "med-212",
+            "service_name": "Vitamin E capsules",
+            "description": "Vitamin E",
+            "amount": 55000
+        },
+        {
+            "id": "med-213",
+            "service_name": "Men vi sinh sống",
+            "description": "Men vi sinh",
+            "amount": 36000
+        },
+        {
+            "id": "med-214",
+            "service_name": "Paracetamol 500mg",
+            "description": "Hạ sốt",
+            "amount": 12000
+        },
+        {
+            "id": "med-215",
+            "service_name": "Smecta",
+            "description": "Tiêu chảy",
+            "amount": 40000
+        },
+        {
+            "id": "med-216",
+            "service_name": "Vitamin C 500mg",
+            "description": "Vitamin C",
+            "amount": 26000
+        },
+        {
+            "id": "med-217",
+            "service_name": "Siro ho trẻ em thảo dược",
+            "description": "Ho",
+            "amount": 70000
+        },
+        {
+            "id": "med-218",
+            "service_name": "Ginkgo Biloba",
+            "description": "Bổ não",
+            "amount": 120000
+        },
+        {
+            "id": "med-219",
+            "service_name": "Cefixime 200mg",
+            "description": "Kháng sinh",
+            "amount": 100000
+        },
+        {
+            "id": "med-220",
+            "service_name": "Vitamin B2",
+            "description": "Vitamin B2",
+            "amount": 20000
+        }
+    ],
+    "config": {
+        "ai_model": "drug-matching-advanced",
+        "ai_temperature": 0.15
+    }
+}

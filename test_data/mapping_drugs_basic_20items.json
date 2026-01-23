@@ -1,0 +1,251 @@
+{
+    "request_id": "req-basic-020",
+    "claims": [
+        {
+            "id": "clm-001",
+            "service_name": "Paracetamol 500",
+            "description": "Thuốc hạ sốt",
+            "amount": 10000
+        },
+        {
+            "id": "clm-002",
+            "service_name": "Vitamin C",
+            "description": "Vitamin C",
+            "amount": 25000
+        },
+        {
+            "id": "clm-003",
+            "service_name": "Vitamin B1",
+            "description": "Vitamin B1",
+            "amount": 18000
+        },
+        {
+            "id": "clm-004",
+            "service_name": "Men tieu hoa",
+            "description": "Men tiêu hóa",
+            "amount": 35000
+        },
+        {
+            "id": "clm-005",
+            "service_name": "Augmentin 625",
+            "description": "Kháng sinh",
+            "amount": 150000
+        },
+        {
+            "id": "clm-006",
+            "service_name": "Cefixim 200",
+            "description": "Kháng sinh",
+            "amount": 98000
+        },
+        {
+            "id": "clm-007",
+            "service_name": "Alpha Choay",
+            "description": "Chống phù nề",
+            "amount": 60000
+        },
+        {
+            "id": "clm-008",
+            "service_name": "Vitamin E",
+            "description": "Vitamin E",
+            "amount": 55000
+        },
+        {
+            "id": "clm-009",
+            "service_name": "Thuốc dị ứng",
+            "description": "Chống dị ứng",
+            "amount": 18000
+        },
+        {
+            "id": "clm-010",
+            "service_name": "Canxi D3",
+            "description": "Bổ sung canxi",
+            "amount": 90000
+        },
+        {
+            "id": "clm-011",
+            "service_name": "Men vi sinh",
+            "description": "Men vi sinh",
+            "amount": 36000
+        },
+        {
+            "id": "clm-012",
+            "service_name": "Siro ho",
+            "description": "Thuốc ho",
+            "amount": 70000
+        },
+        {
+            "id": "clm-013",
+            "service_name": "Vitamin PP",
+            "description": "Vitamin PP",
+            "amount": 22000
+        },
+        {
+            "id": "clm-014",
+            "service_name": "Thuốc cảm",
+            "description": "Thuốc cảm cúm",
+            "amount": 30000
+        },
+        {
+            "id": "clm-015",
+            "service_name": "Omeprazol",
+            "description": "Thuốc dạ dày",
+            "amount": 45000
+        },
+        {
+            "id": "clm-016",
+            "service_name": "Smecta",
+            "description": "Tiêu chảy",
+            "amount": 40000
+        },
+        {
+            "id": "clm-017",
+            "service_name": "Vitamin B6",
+            "description": "Vitamin B6",
+            "amount": 20000
+        },
+        {
+            "id": "clm-018",
+            "service_name": "Vitamin A",
+            "description": "Vitamin A",
+            "amount": 30000
+        },
+        {
+            "id": "clm-019",
+            "service_name": "Thuốc đau đầu",
+            "description": "Giảm đau",
+            "amount": 12000
+        },
+        {
+            "id": "clm-020",
+            "service_name": "Men tiêu hóa sống",
+            "description": "Men tiêu hóa",
+            "amount": 36000
+        }
+    ],
+    "medicines": [
+        {
+            "id": "med-101",
+            "service_name": "Paracetamol 500mg",
+            "description": "Giảm đau hạ sốt",
+            "amount": 10000
+        },
+        {
+            "id": "med-102",
+            "service_name": "Vitamin C 500mg",
+            "description": "Vitamin C",
+            "amount": 26000
+        },
+        {
+            "id": "med-103",
+            "service_name": "Vitamin B1 100mg",
+            "description": "Vitamin B1",
+            "amount": 18000
+        },
+        {
+            "id": "med-104",
+            "service_name": "Men tiêu hóa",
+            "description": "Men tiêu hóa",
+            "amount": 36000
+        },
+        {
+            "id": "med-105",
+            "service_name": "Augmentin 625mg",
+            "description": "Kháng sinh",
+            "amount": 148000
+        },
+        {
+            "id": "med-106",
+            "service_name": "Cefixime 200mg",
+            "description": "Kháng sinh",
+            "amount": 100000
+        },
+        {
+            "id": "med-107",
+            "service_name": "Alpha Chymotrypsin",
+            "description": "Chống phù nề",
+            "amount": 60000
+        },
+        {
+            "id": "med-108",
+            "service_name": "Vitamin E capsules",
+            "description": "Vitamin E",
+            "amount": 55000
+        },
+        {
+            "id": "med-109",
+            "service_name": "Loratadine 10mg",
+            "description": "Chống dị ứng",
+            "amount": 20000
+        },
+        {
+            "id": "med-110",
+            "service_name": "Calcium D3",
+            "description": "Bổ sung canxi",
+            "amount": 88000
+        },
+        {
+            "id": "med-111",
+            "service_name": "Men vi sinh sống",
+            "description": "Men vi sinh",
+            "amount": 36000
+        },
+        {
+            "id": "med-112",
+            "service_name": "Siro ho thảo dược",
+            "description": "Thuốc ho",
+            "amount": 72000
+        },
+        {
+            "id": "med-113",
+            "service_name": "Niacin (Vitamin PP)",
+            "description": "Vitamin PP",
+            "amount": 22000
+        },
+        {
+            "id": "med-114",
+            "service_name": "Cold Tablets",
+            "description": "Thuốc cảm",
+            "amount": 30000
+        },
+        {
+            "id": "med-115",
+            "service_name": "Omeprazole 20mg",
+            "description": "Thuốc dạ dày",
+            "amount": 45000
+        },
+        {
+            "id": "med-116",
+            "service_name": "Smecta sachet",
+            "description": "Tiêu chảy",
+            "amount": 40000
+        },
+        {
+            "id": "med-117",
+            "service_name": "Vitamin B6",
+            "description": "Vitamin B6",
+            "amount": 20000
+        },
+        {
+            "id": "med-118",
+            "service_name": "Vitamin A",
+            "description": "Vitamin A",
+            "amount": 30000
+        },
+        {
+            "id": "med-119",
+            "service_name": "Paracetamol",
+            "description": "Giảm đau",
+            "amount": 12000
+        },
+        {
+            "id": "med-120",
+            "service_name": "Probiotic",
+            "description": "Men tiêu hóa",
+            "amount": 36000
+        }
+    ],
+    "config": {
+        "ai_model": "drug-matching-basic",
+        "ai_temperature": 0.1
+    }
+}

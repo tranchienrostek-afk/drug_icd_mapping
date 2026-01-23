@@ -7,6 +7,7 @@ from app.core.middleware import LogMiddleware
 from app.monitor.middleware import CircuitBreakerMiddleware
 from app.monitor.router import router as monitor_router
 from app.monitor.service import clean_old_logs, setup_monitor_logger
+from app.mapping_drugs.router import router as mapping_router
 import os
 
 app = FastAPI(title="Medical API System", version="1.0.0")
@@ -40,6 +41,7 @@ app.include_router(admin.router, prefix="/api/v1/admin", tags=["Admin"])
 app.include_router(data_management.router, prefix="/api/v1/data", tags=["Data Management"])
 app.include_router(consult.router, prefix="/api/v1", tags=["Consultation"])
 app.include_router(monitor_router, tags=["Monitor"]) # Exposes /monitor and /monitor/stats
+app.include_router(mapping_router, prefix="/api/v1/mapping", tags=["Claims Mapping"])
 
 @app.on_event("startup")
 async def startup_event():

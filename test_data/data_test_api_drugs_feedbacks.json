@@ -1,0 +1,17 @@
+{
+    "diagnoses": [
+        {
+            "code": "J00",
+            "name": "Viêm mũi họng cấp [cảm thường]",
+            "type": "MAIN"
+        }
+    ],
+    "items": [
+        {
+            "id": "916b023e-a5cb-4e8e-b0d4-309f2d02d778",
+            "name": "natriclorid srk saltmax 0 45g 50ml x 100ml"
+        }
+    ],
+    "request_id": "BT/24594",
+    "symptom": "Viêm đường hô hấp - Viêm mũi họng cấp - Nhiễm RSV"
+}

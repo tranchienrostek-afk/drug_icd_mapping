@@ -1,0 +1,165 @@
+[2026-01-23 08:44:30,964] [INFO] 
+[2026-01-23 08:44:30,965] [INFO] ============================================================
+[2026-01-23 08:44:30,966] [INFO] [SERVICE] ========== NEW MATCHING REQUEST ==========
+[2026-01-23 08:44:30,966] [INFO] [SERVICE] Request ID: t1
+[2026-01-23 08:44:30,967] [INFO] [SERVICE] Claims Count: 1
+[2026-01-23 08:44:30,968] [INFO] [SERVICE] Medicine Count: 1
+[2026-01-23 08:44:30,969] [INFO] ============================================================
+[2026-01-23 08:44:30,969] [INFO] [SERVICE] Step 1: Enriching Claims with DB info...
+[2026-01-23 08:44:30,971] [INFO] [SERVICE] Step 1a: Claims enriched in 0ms
+[2026-01-23 08:44:30,971] [INFO] [SERVICE] Step 1b: Medicine enriched in 0ms
+[2026-01-23 08:44:30,972] [INFO] [SERVICE] Step 1 Summary: Claims DB matches: 1/1, Medicine DB matches: 1/1
+[2026-01-23 08:44:30,972] [INFO] [SERVICE] Step 2: Building medicine lookup dict...
+[2026-01-23 08:44:30,973] [INFO] [SERVICE] Step 2: Lookup dict built with 2 keys
+[2026-01-23 08:44:30,974] [INFO] [SERVICE] Step 3: Matching Claims to Medicine...
+[2026-01-23 08:44:30,975] [INFO] [SERVICE] Step 3.1: ✅ MATCHED 'Paracetamol 500mg' -> 'Paracetamol 500mg' (conf=1.0)
+[2026-01-23 08:44:30,975] [INFO] [SERVICE] Debug AI Fallback: Available=True, Unmatched Count=0
+[2026-01-23 08:44:30,976] [INFO] [SERVICE] Step 4: Detecting anomalies...
+[2026-01-23 08:44:30,977] [INFO] [SERVICE] Step 4: Found 0 claims without purchase, 0 purchases without claim
+[2026-01-23 08:44:30,977] [INFO] [SERVICE] ========== MATCHING COMPLETE ==========
+[2026-01-23 08:44:30,978] [INFO] [SERVICE] Total Time: 13ms
+[2026-01-23 08:44:30,979] [INFO] [SERVICE] Matched: 1/1
+[2026-01-23 08:44:30,979] [INFO] [SERVICE] Unmatched: 0
+[2026-01-23 08:44:30,980] [INFO] [SERVICE] Need Review: 0
+[2026-01-23 08:44:30,980] [INFO] [SERVICE] Risk Level: low
+[2026-01-23 08:44:30,981] [INFO] ============================================================
+.[2026-01-23 08:44:31,004] [INFO] 
+[2026-01-23 08:44:31,004] [INFO] ============================================================
+[2026-01-23 08:44:31,005] [INFO] [SERVICE] ========== NEW MATCHING REQUEST ==========
+[2026-01-23 08:44:31,005] [INFO] [SERVICE] Request ID: t2
+[2026-01-23 08:44:31,006] [INFO] [SERVICE] Claims Count: 1
+[2026-01-23 08:44:31,006] [INFO] [SERVICE] Medicine Count: 1
+[2026-01-23 08:44:31,006] [INFO] ============================================================
+[2026-01-23 08:44:31,007] [INFO] [SERVICE] Step 1: Enriching Claims with DB info...
+[2026-01-23 08:44:31,007] [INFO] [SERVICE] Step 1a: Claims enriched in 0ms
+[2026-01-23 08:44:31,008] [INFO] [SERVICE] Step 1b: Medicine enriched in 0ms
+[2026-01-23 08:44:31,009] [INFO] [SERVICE] Step 1 Summary: Claims DB matches: 0/1, Medicine DB matches: 0/1
+[2026-01-23 08:44:31,009] [INFO] [SERVICE] Step 2: Building medicine lookup dict...
+[2026-01-23 08:44:31,010] [INFO] [SERVICE] Step 2: Lookup dict built with 1 keys
+[2026-01-23 08:44:31,011] [INFO] [SERVICE] Step 3: Matching Claims to Medicine...
+[2026-01-23 08:44:31,013] [INFO] [SERVICE] Step 3.1: ✅ MATCHED 'Paracetamol 500' -> 'Paracetamol 500mg' (conf=0.62)
+[2026-01-23 08:44:31,014] [INFO] [SERVICE] Debug AI Fallback: Available=True, Unmatched Count=0
+[2026-01-23 08:44:31,014] [INFO] [SERVICE] Step 4: Detecting anomalies...
+[2026-01-23 08:44:31,015] [INFO] [SERVICE] Step 4: Found 1 claims without purchase, 0 purchases without claim
+[2026-01-23 08:44:31,015] [INFO] [SERVICE] ========== MATCHING COMPLETE ==========
+[2026-01-23 08:44:31,018] [INFO] [SERVICE] Total Time: 12ms
+[2026-01-23 08:44:31,019] [INFO] [SERVICE] Matched: 0/1
+[2026-01-23 08:44:31,020] [INFO] [SERVICE] Unmatched: 0
+[2026-01-23 08:44:31,020] [INFO] [SERVICE] Need Review: 1
+[2026-01-23 08:44:31,021] [INFO] [SERVICE] Risk Level: low
+[2026-01-23 08:44:31,022] [INFO] ============================================================
+.[2026-01-23 08:44:31,043] [INFO] 
+[2026-01-23 08:44:31,043] [INFO] ============================================================
+[2026-01-23 08:44:31,044] [INFO] [SERVICE] ========== NEW MATCHING REQUEST ==========
+[2026-01-23 08:44:31,044] [INFO] [SERVICE] Request ID: t3
+[2026-01-23 08:44:31,045] [INFO] [SERVICE] Claims Count: 1
+[2026-01-23 08:44:31,045] [INFO] [SERVICE] Medicine Count: 1
+[2026-01-23 08:44:31,046] [INFO] ============================================================
+[2026-01-23 08:44:31,046] [INFO] [SERVICE] Step 1: Enriching Claims with DB info...
+[2026-01-23 08:44:31,047] [INFO] [SERVICE] Step 1a: Claims enriched in 0ms
+[2026-01-23 08:44:31,047] [INFO] [SERVICE] Step 1b: Medicine enriched in 0ms
+[2026-01-23 08:44:31,048] [INFO] [SERVICE] Step 1 Summary: Claims DB matches: 1/1, Medicine DB matches: 1/1
+[2026-01-23 08:44:31,049] [INFO] [SERVICE] Step 2: Building medicine lookup dict...
+[2026-01-23 08:44:31,049] [INFO] [SERVICE] Step 2: Lookup dict built with 3 keys
+[2026-01-23 08:44:31,050] [INFO] [SERVICE] Step 3: Matching Claims to Medicine...
+[2026-01-23 08:44:31,051] [INFO] [SERVICE] Step 3.1: ✅ MATCHED 'BrandName X' -> 'GenericName X' (conf=0.79)
+[2026-01-23 08:44:31,052] [INFO] [SERVICE] Debug AI Fallback: Available=True, Unmatched Count=0
+[2026-01-23 08:44:31,052] [INFO] [SERVICE] Step 4: Detecting anomalies...
+[2026-01-23 08:44:31,053] [INFO] [SERVICE] Step 4: Found 0 claims without purchase, 0 purchases without claim
+[2026-01-23 08:44:31,054] [INFO] [SERVICE] ========== MATCHING COMPLETE ==========
+[2026-01-23 08:44:31,054] [INFO] [SERVICE] Total Time: 11ms
+[2026-01-23 08:44:31,055] [INFO] [SERVICE] Matched: 1/1
+[2026-01-23 08:44:31,055] [INFO] [SERVICE] Unmatched: 0
+[2026-01-23 08:44:31,056] [INFO] [SERVICE] Need Review: 1
+[2026-01-23 08:44:31,057] [INFO] [SERVICE] Risk Level: low
+[2026-01-23 08:44:31,057] [INFO] ============================================================
+.[2026-01-23 08:44:31,080] [INFO] 
+[2026-01-23 08:44:31,081] [INFO] ============================================================
+[2026-01-23 08:44:31,082] [INFO] [SERVICE] ========== NEW MATCHING REQUEST ==========
+[2026-01-23 08:44:31,082] [INFO] [SERVICE] Request ID: t4
+[2026-01-23 08:44:31,083] [INFO] [SERVICE] Claims Count: 1
+[2026-01-23 08:44:31,084] [INFO] [SERVICE] Medicine Count: 1
+[2026-01-23 08:44:31,085] [INFO] ============================================================
+[2026-01-23 08:44:31,085] [INFO] [SERVICE] Step 1: Enriching Claims with DB info...
+[2026-01-23 08:44:31,086] [INFO] [SERVICE] Step 1a: Claims enriched in 0ms
+[2026-01-23 08:44:31,087] [INFO] [SERVICE] Step 1b: Medicine enriched in 0ms
+[2026-01-23 08:44:31,088] [INFO] [SERVICE] Step 1 Summary: Claims DB matches: 0/1, Medicine DB matches: 0/1
+[2026-01-23 08:44:31,088] [INFO] [SERVICE] Step 2: Building medicine lookup dict...
+[2026-01-23 08:44:31,089] [INFO] [SERVICE] Step 2: Lookup dict built with 1 keys
+[2026-01-23 08:44:31,089] [INFO] [SERVICE] Step 3: Matching Claims to Medicine...
+[2026-01-23 08:44:31,090] [WARNING] [SERVICE] Step 3.1: ❌ NO MATCH for 'Expensive Cancer Drug'
+[2026-01-23 08:44:31,091] [INFO] [SERVICE] Debug AI Fallback: Available=True, Unmatched Count=1
+[2026-01-23 08:44:31,091] [INFO] [SERVICE] Step 3.5: AI Fallback triggered for 1 unmatched claims...
+[2026-01-23 08:44:33,926] [INFO] [SERVICE] Step 3.5: 🤖 AI RESCUED 'c1' -> 'Vitamin C'
+[2026-01-23 08:44:33,927] [INFO] [SERVICE] Step 4: Detecting anomalies...
+[2026-01-23 08:44:33,928] [INFO] [SERVICE] Step 4: Found 1 claims without purchase, 0 purchases without claim
+[2026-01-23 08:44:33,929] [INFO] [SERVICE] ========== MATCHING COMPLETE ==========
+[2026-01-23 08:44:33,930] [INFO] [SERVICE] Total Time: 2849ms
+[2026-01-23 08:44:33,931] [INFO] [SERVICE] Matched: 0/1
+[2026-01-23 08:44:33,932] [INFO] [SERVICE] Unmatched: 1
+[2026-01-23 08:44:33,933] [INFO] [SERVICE] Need Review: 1
+[2026-01-23 08:44:33,934] [INFO] [SERVICE] Risk Level: high
+[2026-01-23 08:44:33,934] [INFO] ============================================================
+F[2026-01-23 08:44:33,957] [INFO] 
+[2026-01-23 08:44:33,958] [INFO] ============================================================
+[2026-01-23 08:44:33,958] [INFO] [SERVICE] ========== NEW MATCHING REQUEST ==========
+[2026-01-23 08:44:33,959] [INFO] [SERVICE] Request ID: t5
+[2026-01-23 08:44:33,960] [INFO] [SERVICE] Claims Count: 2
+[2026-01-23 08:44:33,960] [INFO] [SERVICE] Medicine Count: 2
+[2026-01-23 08:44:33,961] [INFO] ============================================================
+[2026-01-23 08:44:33,962] [INFO] [SERVICE] Step 1: Enriching Claims with DB info...
+[2026-01-23 08:44:33,963] [INFO] [SERVICE] Step 1a: Claims enriched in 0ms
+[2026-01-23 08:44:33,964] [INFO] [SERVICE] Step 1b: Medicine enriched in 0ms
+[2026-01-23 08:44:33,965] [INFO] [SERVICE] Step 1 Summary: Claims DB matches: 0/2, Medicine DB matches: 0/2
+[2026-01-23 08:44:33,966] [INFO] [SERVICE] Step 2: Building medicine lookup dict...
+[2026-01-23 08:44:33,966] [INFO] [SERVICE] Step 2: Lookup dict built with 2 keys
+[2026-01-23 08:44:33,967] [INFO] [SERVICE] Step 3: Matching Claims to Medicine...
+[2026-01-23 08:44:33,968] [INFO] [SERVICE] Step 3.1: ✅ MATCHED 'Drug Alpha' -> 'Drug Alpha' (conf=0.65)
+[2026-01-23 08:44:33,969] [INFO] [SERVICE] Step 3.2: ✅ MATCHED 'Drug Beta' -> 'Drug Beta' (conf=0.65)
+[2026-01-23 08:44:33,970] [INFO] [SERVICE] Debug AI Fallback: Available=True, Unmatched Count=0
+[2026-01-23 08:44:33,971] [INFO] [SERVICE] Step 4: Detecting anomalies...
+[2026-01-23 08:44:33,971] [INFO] [SERVICE] Step 4: Found 0 claims without purchase, 0 purchases without claim
+[2026-01-23 08:44:33,972] [INFO] [SERVICE] ========== MATCHING COMPLETE ==========
+[2026-01-23 08:44:33,973] [INFO] [SERVICE] Total Time: 15ms
+[2026-01-23 08:44:33,973] [INFO] [SERVICE] Matched: 0/2
+[2026-01-23 08:44:33,974] [INFO] [SERVICE] Unmatched: 0
+[2026-01-23 08:44:33,974] [INFO] [SERVICE] Need Review: 2
+[2026-01-23 08:44:33,975] [INFO] [SERVICE] Risk Level: low
+[2026-01-23 08:44:33,975] [INFO] ============================================================
+.
+======================================================================
+FAIL: test_04_anomaly_detection (__main__.TestClaimsMedicineMatching)
+Test Case 4: Phát hiện bất thường (Thừa/Thiếu thuốc)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/usr/lib/python3.10/unittest/async_case.py", line 64, in _callTestMethod
+    self._callMaybeAsync(method)
+  File "/usr/lib/python3.10/unittest/async_case.py", line 87, in _callMaybeAsync
+    return self._asyncioTestLoop.run_until_complete(fut)
+  File "/usr/lib/python3.10/asyncio/base_events.py", line 649, in run_until_complete
+    return future.result()
+  File "/usr/lib/python3.10/unittest/async_case.py", line 101, in _asyncioLoopRunner
+    ret = await awaitable
+  File "/app/unittest/test_mapping_drugs.py", line 170, in test_04_anomaly_detection
+    self.assertEqual(len(response.anomalies.purchase_without_claim), 1)
+AssertionError: 0 != 1
+
+----------------------------------------------------------------------
+Ran 5 tests in 3.047s
+
+FAILED (failures=1)
+DEBUG: Added /app to sys.path
+
+--- Running Test 01: Exact Match ---
+✅ Test 01 Passed
+
+--- Running Test 02: Fuzzy Match (Para 500 vs Paracetamol 500mg) ---
+✅ Test 02 Passed - Confidence: 0.62 (Weak Match)
+
+--- Running Test 03: DB Enrichment Matching ---
+✅ Test 03 Passed - Matched via Standard DB Name
+
+--- Running Test 04: Anomaly Detection ---
+
+--- Running Test 05: Multi-item Matching ---
+✅ Test 05 Passed - Multi-item list handled correctly

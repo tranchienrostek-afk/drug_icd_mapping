@@ -1,6 +1,6 @@
 import math
 import sqlite3
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
 from app.models import ConsultResult 
 from app.database.core import DatabaseCore
 from app.core.utils import normalize_text
@@ -49,12 +49,14 @@ class ConsultationService:
                     else:
                         continue
                     
+                    category, validity, clean_role = self.auto_correct_mapping(role)
+                    
                     results.append({
                         "id": item.id,
                         "name": item.name,
-                        "category": "drug",
-                        "validity": "valid",
-                        "role": role,
+                        "category": category,
+                        "validity": validity,
+                        "role": clean_role,
                         "explanation": explanation,
                         "source": source,
                         "match_score": match.get('match_score'),
@@ -109,11 +111,13 @@ class ConsultationService:
                 if raw_role and raw_role.lower() not in ('', 'none', 'null'):
                     # Clean the role string (remove JSON artifacts if present)
                     role = self._clean_role_string(raw_role)
+                    category, validity, clean_role = self.auto_correct_mapping(role)
                     
                     return {
-                        "validity": "valid",
-                        "role": role,
-                        "explanation": f"Expert Verified: Classified as '{role}' bởi TĐV.",
+                        "category": category,
+                        "validity": validity,
+                        "role": clean_role,
+                        "explanation": f"Expert Verified: Classified as '{clean_role}' bởi TĐV.",
                         "source": "INTERNAL_KB_TDV"
                     }
             
@@ -122,9 +126,12 @@ class ConsultationService:
                 raw_role = row['treatment_type']
                 if raw_role:
                     role = self._clean_role_string(raw_role)
+                    category, validity, clean_role = self.auto_correct_mapping(role)
+                    
                     return {
-                        "validity": "valid",
-                        "role": role,
+                        "category": category,
+                        "validity": validity,
+                        "role": clean_role,
                         "explanation": "Internal KB (AI): Ingested from historical usage.",
                         "source": "INTERNAL_KB_AI"
                     }
@@ -150,3 +157,47 @@ class ConsultationService:
         s = s.replace('"', '').replace("'", '').replace('{', '').replace('}', '')
         
         return s.strip()
+
+    def auto_correct_mapping(self, role: str) -> Tuple[str, str, str]:
+        """
+        Auto-correct category and validity based on role (Source of Truth).
+        Returns: (category, validity, role)
+        
+        Rules:
+          - group NODRUG: medical equipment, supplement, cosmeceuticals -> category='nodrug', validity=''
+          - group DRUG: main drug, secondary drug -> category='drug', validity='valid'
+          - invalid/null -> category='drug', validity='invalid'
+        """
+        if not role:
+            # Case: Invalid Drug (No role) -> drug / invalid
+            return "drug", "invalid", ""
+            
+        role_lower = role.lower().strip()
+        
+        # Group 1: NODRUG
+        # Extended list based on user context and Task 042
+        non_drug_roles = [
+            "supplement", "thực phẩm chức năng",
+            "cosmeceuticals", "dược mỹ phẩm",
+            "medical equipment", "thiết bị y tế",
+            "medical supply", "vật tư y tế"
+        ]
+        
+        if role_lower in non_drug_roles:
+            return "nodrug", "", role
+            
+        # Group 2: DRUG
+        if role_lower in ["main drug", "secondary drug"]:
+            return "drug", "valid", role
+            
+        # Fallback for "invalid" keyword
+        if "invalid" in role_lower:
+             return "drug", "invalid", role
+             
+        # Default behavior for unknown roles:
+        # Task 042 implies strictness. However, if we have a defined role that isn't in the lists above,
+        # it's ambiguous. But per "Sản phẩm nào cũng có category là drug hoặc nodrug", 
+        # let's map unknown non-empty roles to drug/valid (assuming it's a treatment type not listed)?
+        # OR better, consistent with "invalid" if it doesn't match known types?
+        # Let's stick to safe default: drug, valid (assuming it's a drug role not explicitly listed, unless it says invalid)
+        return "drug", "valid", role
