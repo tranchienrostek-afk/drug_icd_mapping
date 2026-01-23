@@ -1,32 +1,17 @@
-"""
-AI Semantic Matching Service - Level 6 Final Fallback
-======================================================
-Khi tất cả các phương pháp statistical/lexical fail,
-AI sẽ là "chuyên gia dược" cuối cùng để hiểu ngữ nghĩa.
 
-Ví dụ mà AI có thể match nhưng fuzzy/BM25 không:
-- "Augmentin" ↔ "Amoxicillin + Clavulanic Acid" (cùng thuốc, khác tên)
-- "Hapacol" ↔ "Paracetamol" (brand vs generic)
-- "Men tiêu hóa" ↔ "Probiotic" (Việt vs Latin)
-- "Thuốc ho thảo dược" ↔ "Siro Prospan" (generic description vs brand)
-"""
-
-import json
-import logging
 import os
-from typing import List, Dict, Any, Optional, Tuple
-from datetime import datetime
+import logging
+import json
+from typing import List, Dict, Any, Optional
 
-logger = logging.getLogger("mapping_drugs.ai_matcher")
-
-# Try to import OpenAI
-_openai_available = False
+# Check available packages
 try:
     import openai
     _openai_available = True
 except ImportError:
-    pass
+    _openai_available = False
 
+logger = logging.getLogger("mapping_drugs.ai_matcher")
 logger.info(f"[AISemanticMatcher] Module loaded. OpenAI available: {_openai_available}")
 
 
@@ -34,109 +19,65 @@ logger.info(f"[AISemanticMatcher] Module loaded. OpenAI available: {_openai_avai
 # EXPERT PROMPT - Dược sĩ AI (Generalized - No Hardcoded Drugs)
 # =============================================================================
 
-DRUG_MATCHING_SYSTEM_PROMPT = """Bạn là AI Dược sĩ Chuyên gia với kiến thức sâu rộng về Dược phẩm toàn cầu và Việt Nam.
+DRUG_MATCHING_SYSTEM_PROMPT = """Bạn là AI Dược sĩ Chuyên gia. Nhiệm vụ của bạn là so khớp (matching) danh sách Yêu cầu bồi thường (Claims) với danh sách Hóa đơn thuốc (Medicine).
 
-🎯 NHIỆM VỤ:
-So khớp (matching) giữa hai danh sách thuốc:
-- **Claims**: Thuốc khách hàng yêu cầu bồi thường bảo hiểm
-- **Medicine**: Thuốc khách hàng thực tế đã mua (hóa đơn)
+### MATCHING RULES (QUAN TRỌNG):
+1. **Semantic Matching (Linh hoạt - Relaxed)**:
+   - Hãy match linh hoạt dựa trên bản chất dược lý, KHÔNG KHỚP cứng nhắc theo chuỗi ký tự.
+   - CHẤP NHẬN các cặp từ đồng nghĩa (Synonyms) đa ngôn ngữ phổ biến trong y tế:
+     - "Gargle" <=> "Súc họng" / "Nước súc miệng"
+     - "Syrup" / "Syr" <=> "Siro"
+     - "Tablet" / "Tab" <=> "Viên" / "Viên nén"
+     - "Solution" / "Sol" <=> "Dung dịch"
+     - "Ointment" <=> "Thuốc mỡ"
+   - Nếu tên thuốc khác nhau nhưng bản chất là một (cùng hoạt chất, cùng dạng bào chế, cùng công dụng), hãy đánh giá là `matched` (hoặc `weak_match` nếu cần kiểm tra thêm).
 
-🧠 PHƯƠNG PHÁP SUY LUẬN:
-Với mỗi cặp thuốc, hãy phân tích theo các chiều sau:
+2. **Confidence Score**:
+   - 1.0: Chính xác hoàn toàn.
+   - 0.9 - 0.99: Khớp rất cao (khác biệt nhỏ chính tả/format).
+   - 0.7 - 0.89: Semantic match (đồng nghĩa, dịch thuật, tên thương mại khác nhưng cùng hoạt chất).
+   - < 0.5: Không khớp.
 
-1. **Hoạt chất (Active Ingredient)**
-   - Một thuốc có thể có nhiều tên thương mại khác nhau
-   - Tên thương mại (brand) thường khác hoàn toàn tên hoạt chất (generic)
-   - Dựa vào kiến thức dược lý để xác định hoạt chất từ tên thuốc
+3. **Output Format**:
+   - Trả về JSON thuần túy (không markdown).
+   - Cấu trúc bắt buộc:
+     {
+       "matches": [
+         {
+           "claim_id": "...",
+           "medicine_id": "...",
+           "claim_service": "...",
+           "medicine_service": "...",
+           "match_status": "matched" | "partially_matched" | "weak_match" | "no_match",
+           "confidence_score": 0.0 - 1.0,
+           "reasoning": "Giải thích ngắn gọn tại sao match"
+         }
+       ]
+     }
+"""
 
-2. **Nhóm dược lý (Pharmacological Class)**
-   - Thuốc cùng nhóm có thể được mô tả bằng các thuật ngữ khác nhau
-   - Ví dụ: "men vi sinh" và "probiotic" cùng là chế phẩm lợi khuẩn
+DRUG_MATCHING_USER_PROMPT = """
+Dưới đây là danh sách Claims và Medicine cần so khớp:
 
-3. **Hàm lượng & Dạng bào chế**
-   - Chuẩn hóa đơn vị: mg, g, ml, viên, ống...
-   - 500mg = 0.5g, 1g = 1000mg
-
-4. **Ngôn ngữ & Viết tắt**
-   - Tên tiếng Việt ↔ Tên Latin/Anh
-   - Viết tắt phổ biến trong y tế
-   - Mô tả chung vs Tên cụ thể
-
-5. **Công dụng điều trị (Therapeutic Use)**
-   - "Thuốc ho" có thể match với bất kỳ thuốc trị ho nào
-   - "Thuốc đau đầu" có thể là nhóm giảm đau
-
-⚖️ CHIẾN LƯỢC MATCH:
-- **EXACT**: Cùng tên, cùng hàm lượng → confidence 0.95-1.0
-- **EQUIVALENT**: Khác tên nhưng cùng hoạt chất, cùng hàm lượng → confidence 0.85-0.95
-- **SIMILAR**: Cùng nhóm thuốc, công dụng tương đương → confidence 0.70-0.85
-- **POSSIBLE**: Có thể liên quan nhưng cần xác nhận → confidence 0.50-0.70
-- **NO_MATCH**: Không có bằng chứng liên quan → confidence < 0.50
-
-⚠️ QUY TẮC BẮT BUỘC:
-1. **SỬ DỤNG KIẾN THỨC DƯỢC**: Dựa vào kiến thức dược lý của bạn, KHÔNG đoán mò
-2. **GIẢI THÍCH LOGIC**: Mỗi match phải có reasoning rõ ràng
-3. **THỪA NHẬN GIỚI HẠN**: Nếu không chắc → trả về "uncertain"
-4. **KHÔNG TỰ BỊA**: Không tạo thông tin không có căn cứ
-
-📤 OUTPUT FORMAT (JSON):
-{
-  "matches": [
-    {
-      "claim_id": "string",
-      "claim_service": "string", 
-      "medicine_id": "string | null",
-      "medicine_service": "string | null",
-      "match_status": "matched | partial_match | weak_match | no_match | uncertain",
-      "confidence_score": 0.0-1.0,
-      "reasoning": "Giải thích ngắn gọn: [hoạt chất/nhóm thuốc] + [lý do match/không match]"
-    }
-  ],
-  "summary": {
-    "total_processed": number,
-    "matched": number,
-    "partial": number,
-    "unmatched": number,
-    "uncertain": number
-  }
-}
-
-⛔ CẢNH BÁO NGHIÊM TRỌNG:
-- KHÔNG dùng từ "rejected" - thay bằng "flagged_for_review"
-- AI CHỈ ĐỀ XUẤT, quyết định cuối cùng thuộc về con người
-- Với case khó/mơ hồ → đánh dấu "uncertain" để human review"""
-
-
-DRUG_MATCHING_USER_PROMPT = """Hãy so khớp danh sách Claims với danh sách Medicine dưới đây.
-
-📋 DANH SÁCH CLAIMS (Yêu cầu bồi thường):
+### 1. Claims (Yêu cầu bồi thường)
 {claims_json}
 
-💊 DANH SÁCH MEDICINE (Hóa đơn mua thuốc):
+### 2. Medicine (Hóa đơn mua thuốc)
 {medicine_json}
 
-📊 THÔNG TIN BỔ SUNG TỪ DATABASE (nếu có):
+### 3. Thông tin bổ sung từ Database (Context)
 {db_enrichment}
 
-Hãy phân tích và trả về JSON output theo format đã quy định."""
+Hãy thực hiện matching từng claim với medicine phù hợp nhất.
+Nếu không tìm thấy medicine phù hợp, hãy đánh dấu match_status="no_match" và medicine_id=null.
+"""
 
+from datetime import datetime
 
 class AISemanticMatcher:
-    """
-    AI-powered semantic drug matching.
-    
-    Sử dụng LLM (OpenAI GPT-4 hoặc tương đương) để match
-    các thuốc mà fuzzy/BM25/TF-IDF không thể match được.
-    Updated for OpenAI v1.x client.
-    """
-    
-    def __init__(self, api_key: Optional[str] = None, model: str = None):
-        """
-        Khởi tạo AI Matcher with V1 Client.
-        Support cả Standard OpenAI và Azure OpenAI.
-        """
+    def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
         self.client = None
-        self.client_type = "unknown"
+        self.client_type = None
         self.model = None
         
         # Load Env Vars
@@ -248,71 +189,37 @@ class AISemanticMatcher:
             if response_text.strip().startswith("{"):
                 return json.loads(response_text)
             
-            # Try to extract JSON from markdown code block
-            import re
-            json_match = re.search(r'```json\s*(.*?)\s*```', response_text, re.DOTALL)
-            if json_match:
-                return json.loads(json_match.group(1))
+            # Try extracting from code block
+            if "```json" in response_text:
+                json_str = response_text.split("```json")[1].split("```")[0].strip()
+                return json.loads(json_str)
             
-            # Try to find JSON object in text
-            json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
-            if json_match:
-                return json.loads(json_match.group(0))
+            if "```" in response_text:
+                json_str = response_text.split("```")[1].split("```")[0].strip()
+                return json.loads(json_str)
             
-            logger.warning("[AISemanticMatcher] Could not parse JSON from response")
-            return {"matches": [], "summary": {"error": "Could not parse AI response"}}
+            # Fallback
+            return {"matches": [], "raw_output": response_text}
             
-        except json.JSONDecodeError as e:
-            logger.error(f"[AISemanticMatcher] JSON parse error: {e}")
-            return {"matches": [], "summary": {"error": str(e)}}
-    
-    def _fallback_response(self, claims: List[Dict], medicine: List[Dict]) -> Dict:
-        """Fallback response when AI is not available."""
-        return {
-            "matches": [
-                {
-                    "claim_id": c.get("claim_id", ""),
-                    "claim_service": c.get("service", ""),
-                    "medicine_id": None,
-                    "medicine_service": None,
-                    "match_status": "uncertain",
-                    "confidence_score": 0.0,
-                    "reasoning": "AI không khả dụng - cần human review"
-                }
-                for c in claims
-            ],
-            "summary": {
-                "total_processed": len(claims),
-                "matched": 0,
-                "partial": 0,
-                "unmatched": 0,
-                "uncertain": len(claims)
-            },
-            "ai_model": "fallback",
-            "processing_time_ms": 0
-        }
+        except Exception as e:
+            logger.error(f"[AISemanticMatcher] JSON Parse Error: {e}")
+            return {"matches": [], "error": str(e), "raw_output": response_text}
 
+    def _fallback_response(self, claims, medicine) -> Dict:
+        """Return unmatched response on failure."""
+        matches = []
+        for c in claims:
+            matches.append({
+                "claim_id": c.get("claim_id"),
+                "medicine_id": None,
+                "match_status": "no_match",
+                "confidence_score": 0.0,
+                "reasoning": "AI Matcher failed or unavailable"
+            })
+        return {"matches": matches}
 
-# =============================================================================
-# Simplified sync version (for integration with existing service)
-# =============================================================================
-
-def ai_match_drugs_sync(
-    claims: List[Dict],
-    medicine: List[Dict],
-    db_enrichment: Optional[Dict] = None,
-    api_key: Optional[str] = None
-) -> Dict[str, Any]:
-    """
-    Synchronous wrapper for AI matching.
-    
-    Use this in existing sync code.
-    """
+# Synchronous wrapper if needed (deprecated in async flow)
+def ai_match_drugs_sync(claims, medicine):
     import asyncio
-    
-    matcher = AISemanticMatcher(api_key=api_key)
-    
-    # Run async function in sync context
-    return asyncio.run(
-        matcher.match_claims_medicine(claims, medicine, db_enrichment)
-    )
+    matcher = AISemanticMatcher()
+    return asyncio.run(matcher.match_claims_medicine(claims, medicine))

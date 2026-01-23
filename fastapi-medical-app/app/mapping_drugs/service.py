@@ -214,11 +214,10 @@ class ClaimsMedicineMatchingService:
                 logger.error(f"[SERVICE] AI Fallback failed: {e}")
         elif unmatched_indices:
              logger.info(f"[SERVICE] Step 3.5: AI Fallback skipped (AI not available or disabled)")
-        logger.info(f"[SERVICE] Step 4: Detecting anomalies...")
         anomalies = self._detect_anomalies(
             enriched_claims, 
             enriched_medicine, 
-            matched_medicine_ids
+            matched_pairs
         )
         logger.info(f"[SERVICE] Step 4: Found {len(anomalies.claim_without_purchase)} claims without purchase, {len(anomalies.purchase_without_claim)} purchases without claim")
         
@@ -248,7 +247,7 @@ class ClaimsMedicineMatchingService:
             status="processed",
             processing_timestamp=datetime.utcnow(),
             summary=summary,
-            results=matched_pairs,
+            results=[r for r in matched_pairs if r.match_status != "no_match"],
             anomalies=anomalies,
             audit_trail=audit
         )
@@ -316,7 +315,7 @@ class ClaimsMedicineMatchingService:
         Returns:
             (MatchedPair, matched_medicine_id or None)
         """
-        claim_id = claim.get('claim_id', '')
+        claim_id = claim.get('id') or claim.get('claim_id', '')
         claim_service = claim.get('service', '')
         claim_normalized = claim.get('_normalized', '')
         claim_amount = claim.get('amount', 0) or 0
@@ -405,7 +404,7 @@ class ClaimsMedicineMatchingService:
                 med_norm = med.get('_normalized', '')
                 if med_norm:
                     score = fuzz.token_sort_ratio(claim_norm, med_norm)
-                    if score > best_score and score >= 80:
+                    if score > best_score and score >= 70:
                         best_score = score
                         best_match = med
             
@@ -496,35 +495,33 @@ class ClaimsMedicineMatchingService:
         self, 
         claims: List[Dict], 
         medicines: List[Dict],
-        matched_medicine_ids: set
+        matched_pairs: List[MatchedPair]
     ) -> AnomaliesReport:
-        """Phát hiện các bất thường."""
+        """Phát hiện các bất thường dựa trên kết quả matching."""
         claim_without_purchase = []
         purchase_without_claim = []
         
-        # Claims không có trong medicine
+        # 1. Claims không tìm thấy thuốc tương ứng
+        # Lấy tập hợp IDs của các claims đã được match (Status != no_match)
+        matched_claim_ids = {p.claim_id for p in matched_pairs if p.match_status != "no_match"}
+        
         for claim in claims:
-            # Kiểm tra xem claim có match được không
-            claim_norm = claim.get('_normalized', '')
-            found = False
-            for med in medicines:
-                if claim_norm == med.get('_normalized', ''):
-                    found = True
-                    break
-            
-            if not found and claim.get('_db_status') != 'FOUND':
+            cid = claim.get('id') or claim.get('claim_id', '')
+            if cid not in matched_claim_ids:
                 claim_without_purchase.append(Anomaly(
-                    id=claim.get('claim_id', ''),
+                    id=cid,
                     service=claim.get('service', ''),
                     amount=claim.get('amount'),
                     risk_flag="high",
                     reason="Không tìm thấy thuốc tương ứng trong danh sách mua"
                 ))
         
-        # Medicine không được claim
+        # 2. Medicine không được sử dụng để bồi thường
+        used_medicine_ids = {p.medicine_id for p in matched_pairs if p.medicine_id}
+        
         for med in medicines:
             med_id = med.get('medicine_id', '')
-            if med_id not in matched_medicine_ids:
+            if med_id not in used_medicine_ids:
                 purchase_without_claim.append(Anomaly(
                     id=med_id,
                     service=med.get('service', ''),
