@@ -1,47 +1,170 @@
-name: Deploy to Production
+name: CI/CD Pipeline - Staging → Production
 
-# DISABLED AUTO-DEPLOY - Now requires manual trigger
-# Old trigger: push to main
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'fastapi-medical-app/**'
+      - '.github/workflows/**'
   workflow_dispatch:
     inputs:
-      confirm:
-        description: 'Type "deploy" to confirm'
-        required: true
+      skip_staging:
+        description: 'Skip staging, deploy directly to prod'
+        type: boolean
+        default: false
 
 jobs:
-  deploy:
+  # ============================
+  # STAGE 1: Deploy to Staging
+  # ============================
+  staging:
+    name: 🚀 Deploy Staging
     runs-on: self-hosted
+    outputs:
+      staging_passed: ${{ steps.test.outputs.passed }}
+    
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
       
-      # Since the runner is ON the server, we can run commands directly.
-      # However, we want to update the EXISTING deployment folder, not just the runner's workspace.
-      - name: Deploy to /root/workspace
+      - name: Deploy to Staging
         run: |
-          # Safety: Isolate this project to avoid conflicts and allow root operations
-          # Migration: Cleanup LEGACY container to free port 8000
-          docker rm -f drug_icd_mapping_web_1 || true
+          export RUNNER_ALLOW_RUNASROOT=1
+          export HOME=/root
+          export COMPOSE_PROJECT_NAME=drug_icd_staging
           
+          STAGING_DIR="/root/workspace/drug_icd_mapping_staging/fastapi-medical-app"
+          
+          echo "=========================================="
+          echo "📦 STAGING DEPLOYMENT"
+          echo "=========================================="
+          
+          cd $STAGING_DIR
+          git config --global --add safe.directory $STAGING_DIR
+          
+          echo "1. Pulling latest code..."
+          git fetch origin main
+          git reset --hard origin/main
+          
+          echo "2. Rebuilding Staging Container..."
+          docker-compose -f docker-compose.staging.yml rm -f -s web || true
+          docker-compose -f docker-compose.staging.yml up -d --build web
+          
+          echo "3. Waiting for container startup..."
+          sleep 15
+          
+          echo ">>> STAGING DEPLOYED <<<"
+          docker-compose -f docker-compose.staging.yml ps
+      
+      - name: Run Tests on Staging
+        id: test
+        run: |
+          export RUNNER_ALLOW_RUNASROOT=1
+          
+          echo "=========================================="
+          echo "🧪 RUNNING TESTS ON STAGING"
+          echo "=========================================="
+          
+          # Health check
+          echo "1. Health Check..."
+          HEALTH=$(curl -s http://localhost:8001/api/v1/health || echo "FAILED")
+          echo "Health: $HEALTH"
+          
+          if [[ "$HEALTH" != *"healthy"* ]]; then
+            echo "❌ Health check FAILED!"
+            echo "passed=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          echo "✅ Health check PASSED"
+          
+          # Run unit tests inside container
+          echo "2. Running Unit Tests..."
+          docker exec drug_icd_staging_web pytest /app/unittest/ -v --tb=short || {
+            echo "❌ Unit tests FAILED!"
+            echo "passed=false" >> $GITHUB_OUTPUT
+            exit 1
+          }
+          echo "✅ Unit tests PASSED"
+          
+          # API smoke test
+          echo "3. API Smoke Test..."
+          API_RESULT=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8001/api/v1/drugs/?q=panadol)
+          if [[ "$API_RESULT" != "200" ]]; then
+            echo "❌ API smoke test FAILED! Status: $API_RESULT"
+            echo "passed=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          echo "✅ API smoke test PASSED"
+          
+          echo "=========================================="
+          echo "✅ ALL STAGING TESTS PASSED"
+          echo "=========================================="
+          echo "passed=true" >> $GITHUB_OUTPUT
+
+  # ============================
+  # STAGE 2: Deploy to Production
+  # ============================
+  production:
+    name: 🚀 Deploy Production
+    runs-on: self-hosted
+    needs: staging
+    if: ${{ needs.staging.outputs.staging_passed == 'true' || github.event.inputs.skip_staging == 'true' }}
+    
+    steps:
+      - name: Deploy to Production
+        run: |
           export RUNNER_ALLOW_RUNASROOT=1
           export HOME=/root
           export COMPOSE_PROJECT_NAME=drug_icd_mapping_prod
           
-          TARGET_DIR="/root/workspace/drug_icd_mapping/fastapi-medical-app"
+          PROD_DIR="/root/workspace/drug_icd_mapping/fastapi-medical-app"
           
-          echo "Deploying to $TARGET_DIR"
-          cd $TARGET_DIR
+          echo "=========================================="
+          echo "🏭 PRODUCTION DEPLOYMENT"
+          echo "=========================================="
+          
+          cd $PROD_DIR
+          git config --global --add safe.directory $PROD_DIR
           
           echo "1. Pulling latest code..."
-          git config --global --add safe.directory $TARGET_DIR
-          git pull origin main
+          git fetch origin main
+          git reset --hard origin/main
           
-          echo "2. Rebuilding Container..."
-          cp Dockerfile.prod Dockerfile
+          echo "2. Rebuilding Production Container..."
           # Workaround for docker-compose 1.29 KeyError: 'ContainerConfig'
           docker-compose rm -f -s web || true
-          docker-compose up -d --build --no-deps web
+          docker-compose up -d --build web
           
-          echo ">>> DEPLOYMENT SUCCESSFUL <<<"
+          echo "3. Waiting for container startup..."
+          sleep 15
+          
+          echo ">>> PRODUCTION DEPLOYED <<<"
           docker-compose ps
+      
+      - name: Production Health Check
+        run: |
+          echo "4. Production Health Check..."
+          
+          for i in {1..5}; do
+            HEALTH=$(curl -s http://localhost:8000/api/v1/health || echo "FAILED")
+            if [[ "$HEALTH" == *"healthy"* ]]; then
+              echo "✅ Production is HEALTHY!"
+              echo "$HEALTH"
+              exit 0
+            fi
+            echo "Attempt $i: Waiting..."
+            sleep 5
+          done
+          
+          echo "❌ Production health check FAILED!"
+          exit 1
+      
+      - name: Deployment Summary
+        run: |
+          echo "=========================================="
+          echo "✅ CI/CD PIPELINE COMPLETE"
+          echo "=========================================="
+          echo "Staging:    http://localhost:8001 ✅"
+          echo "Production: http://localhost:8000 ✅"
+          echo "Commit:     ${{ github.sha }}"
+          echo "=========================================="
