@@ -133,7 +133,10 @@ jobs:
           git fetch origin main
           git reset --hard origin/main
           
+          
           echo "2. Rebuilding Production Container..."
+          # Cleanup conflict container by name
+          docker rm -f drug_icd_mapping_prod_web || true
           # Workaround for docker-compose 1.29 KeyError: 'ContainerConfig'
           docker-compose rm -f -s web || true
           docker-compose up -d --build web
