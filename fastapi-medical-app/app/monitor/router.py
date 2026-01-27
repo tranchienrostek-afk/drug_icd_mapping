@@ -1,9 +1,15 @@
 from fastapi import APIRouter, Depends
 from fastapi.responses import HTMLResponse
-from app.monitor.service import get_system_stats, get_monitor_stats, get_recent_logs
+from app.monitor.service import get_system_stats, get_detailed_system_stats, get_monitor_stats, get_recent_logs
 import os
 
 router = APIRouter()
+
+@router.get("/api/v1/monitor/system")
+async def get_detailed_system():
+    """Returns comprehensive system hardware information."""
+    return get_detailed_system_stats()
+
 
 @router.get("/api/v1/monitor/stats")
 async def get_summary_stats():

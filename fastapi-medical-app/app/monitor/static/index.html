@@ -17,6 +17,8 @@
             --accent-purple: #8b5cf6;
             --accent-green: #10b981;
             --accent-red: #ef4444;
+            --accent-orange: #f59e0b;
+            --accent-cyan: #06b6d4;
             --text-primary: #f8fafc;
             --text-secondary: #94a3b8;
             --border: rgba(255, 255, 255, 0.08);
@@ -42,7 +44,7 @@
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
         }
 
@@ -85,16 +87,14 @@
         }
 
         @keyframes pulse {
-            0% {
+
+            0%,
+            100% {
                 opacity: 1;
             }
 
             50% {
                 opacity: 0.4;
-            }
-
-            100% {
-                opacity: 1;
             }
         }
 
@@ -145,7 +145,7 @@
         /* Stats Grid */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 1.5rem;
             margin-bottom: 2rem;
         }
@@ -181,6 +181,110 @@
         .card-sub {
             font-size: 0.875rem;
             color: var(--accent-green);
+        }
+
+        /* Gauge Container */
+        .gauge-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem 0;
+        }
+
+        .gauge {
+            position: relative;
+            width: 140px;
+            height: 70px;
+            overflow: hidden;
+        }
+
+        .gauge-bg {
+            position: absolute;
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            border: 12px solid rgba(255, 255, 255, 0.1);
+            border-bottom-color: transparent;
+            border-left-color: transparent;
+            transform: rotate(-45deg);
+            top: 0;
+        }
+
+        .gauge-fill {
+            position: absolute;
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            border: 12px solid var(--accent-blue);
+            border-bottom-color: transparent;
+            border-left-color: transparent;
+            transform: rotate(-45deg);
+            top: 0;
+            transition: transform 0.5s ease;
+        }
+
+        .gauge-value {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 1.75rem;
+            font-weight: 700;
+        }
+
+        /* System Info Grid */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .info-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+
+        .info-value {
+            font-size: 1rem;
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Network Stats */
+        .network-stats {
+            display: flex;
+            gap: 2rem;
+            justify-content: center;
+            margin-top: 1rem;
+        }
+
+        .net-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .net-icon {
+            font-size: 1.5rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .net-value {
+            font-size: 1.25rem;
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .net-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
         }
 
         /* Logs Table */
@@ -312,16 +416,19 @@
             color: #60a5fa;
         }
 
-        .json-key {
-            color: #a78bfa;
+        /* Progress Bar */
+        .progress-bar {
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 0.5rem;
         }
 
-        .json-string {
-            color: #10b981;
-        }
-
-        .json-number {
-            color: #f59e0b;
+        .progress-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s ease;
         }
     </style>
 </head>
@@ -339,8 +446,9 @@
         </header>
 
         <div class="tabs">
-            <button class="tab-btn active" onclick="switchTab('summary')">Summary</button>
-            <button class="tab-btn" onclick="switchTab('detail')">Request Detail</button>
+            <button class="tab-btn active" onclick="switchTab('summary')">📊 Summary</button>
+            <button class="tab-btn" onclick="switchTab('system')">💻 System</button>
+            <button class="tab-btn" onclick="switchTab('detail')">📋 Request Detail</button>
         </div>
 
         <!-- SUMMARY TAB -->
@@ -360,6 +468,126 @@
                     <div class="card-label">System CPU / RAM</div>
                     <div class="card-value" id="sys-load">--/--%</div>
                     <div class="card-sub" id="sub-sys">Healthy resources</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SYSTEM TAB -->
+        <div id="tab-system" class="tab-content">
+            <div class="stats-grid">
+                <!-- CPU Card -->
+                <div class="card">
+                    <div class="card-label">🔥 CPU Usage</div>
+                    <div class="gauge-container">
+                        <div class="gauge">
+                            <div class="gauge-bg"></div>
+                            <div class="gauge-fill" id="cpu-gauge"></div>
+                            <div class="gauge-value" id="cpu-value">--%</div>
+                        </div>
+                    </div>
+                    <div class="info-grid" style="margin-top: 1rem;">
+                        <div class="info-item">
+                            <span class="info-label">Cores</span>
+                            <span class="info-value" id="cpu-cores">--</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Logical</span>
+                            <span class="info-value" id="cpu-logical">--</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Memory Card -->
+                <div class="card">
+                    <div class="card-label">🧠 Memory Usage</div>
+                    <div class="gauge-container">
+                        <div class="gauge">
+                            <div class="gauge-bg"></div>
+                            <div class="gauge-fill" id="ram-gauge" style="border-color: var(--accent-purple);"></div>
+                            <div class="gauge-value" id="ram-value">--%</div>
+                        </div>
+                    </div>
+                    <div class="info-grid" style="margin-top: 1rem;">
+                        <div class="info-item">
+                            <span class="info-label">Used</span>
+                            <span class="info-value" id="ram-used">-- GB</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Total</span>
+                            <span class="info-value" id="ram-total">-- GB</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Disk Card -->
+                <div class="card">
+                    <div class="card-label">💾 Disk Usage</div>
+                    <div class="gauge-container">
+                        <div class="gauge">
+                            <div class="gauge-bg"></div>
+                            <div class="gauge-fill" id="disk-gauge" style="border-color: var(--accent-orange);"></div>
+                            <div class="gauge-value" id="disk-value">--%</div>
+                        </div>
+                    </div>
+                    <div class="info-grid" style="margin-top: 1rem;">
+                        <div class="info-item">
+                            <span class="info-label">Used</span>
+                            <span class="info-value" id="disk-used">-- GB</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Total</span>
+                            <span class="info-value" id="disk-total">-- GB</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Uptime Card -->
+                <div class="card">
+                    <div class="card-label">⏱️ Server Uptime</div>
+                    <div class="card-value" id="uptime-value" style="font-size: 2rem; color: var(--accent-cyan);">--
+                    </div>
+                    <div class="card-sub" id="uptime-boot">Last boot: --</div>
+                </div>
+
+                <!-- Network Card -->
+                <div class="card" style="grid-column: span 2;">
+                    <div class="card-label">🌐 Network I/O</div>
+                    <div class="network-stats">
+                        <div class="net-item">
+                            <span class="net-icon">⬆️</span>
+                            <span class="net-value" id="net-sent">-- GB</span>
+                            <span class="net-label">Sent</span>
+                        </div>
+                        <div class="net-item">
+                            <span class="net-icon">⬇️</span>
+                            <span class="net-value" id="net-recv">-- GB</span>
+                            <span class="net-label">Received</span>
+                        </div>
+                        <div class="net-item">
+                            <span class="net-icon">📦</span>
+                            <span class="net-value" id="net-packets">--</span>
+                            <span class="net-label">Packets</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Process Card -->
+                <div class="card">
+                    <div class="card-label">🐍 App Process</div>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="info-label">CPU</span>
+                            <span class="info-value" id="proc-cpu">-- %</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Memory</span>
+                            <span class="info-value" id="proc-ram">-- MB</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Threads</span>
+                            <span class="info-value" id="proc-threads">--</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -412,6 +640,21 @@
             document.getElementById(`tab-${tab}`).classList.add('active');
 
             if (tab === 'detail') fetchLogs();
+            if (tab === 'system') fetchSystemStats();
+        }
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function updateGauge(elementId, percent) {
+            // Gauge rotation: -45deg (0%) to 135deg (100%)
+            const rotation = -45 + (percent * 1.8);
+            document.getElementById(elementId).style.transform = `rotate(${rotation}deg)`;
         }
 
         async function fetchStats() {
@@ -430,6 +673,51 @@
                 document.getElementById('sys-load').innerText = `${cpu}% / ${ram}%`;
 
             } catch (err) { console.error("Stats Error:", err); }
+        }
+
+        async function fetchSystemStats() {
+            try {
+                const res = await fetch('/api/v1/monitor/system');
+                const data = await res.json();
+
+                // CPU
+                const cpuPercent = data.cpu.percent.toFixed(1);
+                document.getElementById('cpu-value').innerText = cpuPercent + '%';
+                updateGauge('cpu-gauge', data.cpu.percent);
+                document.getElementById('cpu-cores').innerText = data.cpu.count || '--';
+                document.getElementById('cpu-logical').innerText = data.cpu.count_logical || '--';
+
+                // Memory
+                const ramPercent = data.memory.percent.toFixed(1);
+                document.getElementById('ram-value').innerText = ramPercent + '%';
+                updateGauge('ram-gauge', data.memory.percent);
+                document.getElementById('ram-used').innerText = formatBytes(data.memory.used);
+                document.getElementById('ram-total').innerText = formatBytes(data.memory.total);
+
+                // Disk
+                const diskPercent = data.disk.percent.toFixed(1);
+                document.getElementById('disk-value').innerText = diskPercent + '%';
+                updateGauge('disk-gauge', data.disk.percent);
+                document.getElementById('disk-used').innerText = formatBytes(data.disk.used);
+                document.getElementById('disk-total').innerText = formatBytes(data.disk.total);
+
+                // Uptime
+                document.getElementById('uptime-value').innerText = data.uptime.uptime_formatted;
+                const bootDate = new Date(data.uptime.boot_time * 1000);
+                document.getElementById('uptime-boot').innerText = 'Last boot: ' + bootDate.toLocaleString();
+
+                // Network
+                document.getElementById('net-sent').innerText = formatBytes(data.network.bytes_sent);
+                document.getElementById('net-recv').innerText = formatBytes(data.network.bytes_recv);
+                document.getElementById('net-packets').innerText =
+                    (data.network.packets_sent + data.network.packets_recv).toLocaleString();
+
+                // Process
+                document.getElementById('proc-cpu').innerText = data.process.cpu.toFixed(1) + ' %';
+                document.getElementById('proc-ram').innerText = formatBytes(data.process.ram);
+                document.getElementById('proc-threads').innerText = data.process.threads || '--';
+
+            } catch (err) { console.error("System Stats Error:", err); }
         }
 
         async function fetchLogs() {
@@ -479,7 +767,8 @@
         setInterval(fetchStats, 5000);
         setInterval(() => {
             if (document.getElementById('tab-detail').classList.contains('active')) fetchLogs();
-        }, 10000);
+            if (document.getElementById('tab-system').classList.contains('active')) fetchSystemStats();
+        }, 5000);
 
     </script>
 </body>

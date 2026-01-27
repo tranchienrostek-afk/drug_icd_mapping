@@ -209,7 +209,7 @@ def setup_monitor_logger():
     return logger
 
 def get_system_stats():
-    # ... (existing stats logic)
+    """Returns basic system stats for the dashboard summary."""
     sys_cpu = psutil.cpu_percent(interval=None)
     virtual_mem = psutil.virtual_memory()
     disk_usage = shutil.disk_usage("/")
@@ -221,16 +221,95 @@ def get_system_stats():
         proc_cpu = 0
         proc_mem = 0
     return {
-        "system": {
-            "cpu": sys_cpu,
-            "ram": {"percent": virtual_mem.percent, "used": virtual_mem.used, "total": virtual_mem.total},
-            "disk": {"percent": (disk_usage.used / disk_usage.total) * 100 if disk_usage.total > 0 else 0}
-        },
+        "cpu": sys_cpu,
+        "ram": {"percent": virtual_mem.percent, "used": virtual_mem.used, "total": virtual_mem.total},
+        "disk": {"percent": (disk_usage.used / disk_usage.total) * 100 if disk_usage.total > 0 else 0},
         "process": {"cpu": proc_cpu, "ram": proc_mem}
     }
 
+
+def get_detailed_system_stats():
+    """Returns comprehensive system hardware information."""
+    sys_cpu = psutil.cpu_percent(interval=0.5)
+    virtual_mem = psutil.virtual_memory()
+    disk_usage = shutil.disk_usage("/")
+    net_io = psutil.net_io_counters()
+    boot_time = psutil.boot_time()
+    uptime_seconds = time.time() - boot_time
+    
+    # CPU frequency (may not be available on all systems)
+    cpu_freq = None
+    try:
+        freq = psutil.cpu_freq()
+        if freq:
+            cpu_freq = {"current": freq.current, "min": freq.min, "max": freq.max}
+    except Exception:
+        pass
+    
+    # Process (this app) stats
+    process = psutil.Process()
+    try:
+        proc_cpu = process.cpu_percent(interval=None)
+        proc_mem = process.memory_info().rss
+        proc_threads = process.num_threads()
+    except Exception:
+        proc_cpu = 0
+        proc_mem = 0
+        proc_threads = 0
+    
+    return {
+        "cpu": {
+            "percent": sys_cpu,
+            "count": psutil.cpu_count(),
+            "count_logical": psutil.cpu_count(logical=True),
+            "frequency": cpu_freq
+        },
+        "memory": {
+            "total": virtual_mem.total,
+            "available": virtual_mem.available,
+            "used": virtual_mem.used,
+            "percent": virtual_mem.percent
+        },
+        "disk": {
+            "total": disk_usage.total,
+            "used": disk_usage.used,
+            "free": disk_usage.free,
+            "percent": (disk_usage.used / disk_usage.total) * 100 if disk_usage.total > 0 else 0
+        },
+        "network": {
+            "bytes_sent": net_io.bytes_sent,
+            "bytes_recv": net_io.bytes_recv,
+            "packets_sent": net_io.packets_sent,
+            "packets_recv": net_io.packets_recv
+        },
+        "uptime": {
+            "boot_time": boot_time,
+            "uptime_seconds": uptime_seconds,
+            "uptime_formatted": _format_uptime(uptime_seconds)
+        },
+        "process": {
+            "cpu": proc_cpu,
+            "ram": proc_mem,
+            "threads": proc_threads
+        }
+    }
+
+
+def _format_uptime(seconds: float) -> str:
+    """Format uptime in human readable format."""
+    days = int(seconds // 86400)
+    hours = int((seconds % 86400) // 3600)
+    minutes = int((seconds % 3600) // 60)
+    if days > 0:
+        return f"{days}d {hours}h {minutes}m"
+    elif hours > 0:
+        return f"{hours}h {minutes}m"
+    else:
+        return f"{minutes}m"
+
+
 def check_resources(max_cpu: float, max_ram: float) -> tuple[bool, str]:
-    # ... (existing check logic)
+    """Check if resources are within acceptable limits."""
     cpu_percent = psutil.cpu_percent(interval=None)
     ram_percent = psutil.virtual_memory().percent
     if cpu_percent > max_cpu:
@@ -238,3 +317,4 @@ def check_resources(max_cpu: float, max_ram: float) -> tuple[bool, str]:
     if ram_percent > max_ram:
         return False, f"RAM Critical: {ram_percent}% > {max_ram}%"
     return True, "OK"
+
