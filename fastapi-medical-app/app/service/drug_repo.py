@@ -115,7 +115,9 @@ class DrugRepository:
     def get_links_list(self, page: int = 1, limit: int = 20, search: str = "") -> dict:
         """Get paginated list of drug-disease links from knowledge_base."""
         conn = self.db_core.get_connection()
-        conn.row_factory = sqlite3.Row
+        # Only set row_factory for SQLite
+        if self.db_core.db_type == 'sqlite':
+            conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         offset = (page - 1) * limit
         
@@ -127,7 +129,12 @@ class DrugRepository:
                     WHERE (drug_name_norm LIKE ? OR disease_name_norm LIKE ? OR disease_icd LIKE ?)
                     AND drug_name_norm != '_icd_list_'
                 """, (search_term, search_term, search_term))
-                total = cursor.fetchone()[0]
+                res = cursor.fetchone()
+                # Handle different cursor return types
+                if isinstance(res, dict):
+                    total = list(res.values())[0]
+                else:
+                    total = res[0]
                 
                 cursor.execute("""
                     SELECT id, drug_ref_id, disease_icd as icd_code, 
@@ -143,7 +150,12 @@ class DrugRepository:
                 """, (search_term, search_term, search_term, limit, offset))
             else:
                 cursor.execute("SELECT COUNT(*) FROM knowledge_base WHERE drug_name_norm != '_icd_list_'")
-                total = cursor.fetchone()[0]
+                res = cursor.fetchone()
+                # Handle different cursor return types
+                if isinstance(res, dict):
+                    total = list(res.values())[0]
+                else:
+                    total = res[0]
                 
                 cursor.execute("""
                     SELECT id, drug_ref_id, disease_icd as icd_code, 
