@@ -51,7 +51,11 @@ class ConsultationService:
                         source = "INTERNAL_KB_AI"
                         explanation = f"AI Classification: '{role}' (TĐV đồng ý). (Match: {match['match_method']})"
                     else:
-                        continue  # No valid role, try next diagnosis
+                        # RULE: Nếu có match trong KB nhưng role trống/valid → mặc định main drug
+                        # Vì thuốc đã tồn tại trong KB = đã được validate trước đó
+                        role = "main drug"
+                        source = "INTERNAL_KB_DEFAULT"
+                        explanation = f"Thuốc có trong KB, mặc định là thuốc điều trị chính. (Match: {match['match_method']})"
                     
                     category, validity, clean_role = self.auto_correct_mapping(role)
                     
