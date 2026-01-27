@@ -76,7 +76,8 @@ class ClaimsMedicineMatchingService:
     AMOUNT_TOLERANCE = 0.20  # ±20% giá
     
     def __init__(self, db_path: Optional[str] = None):
-        self.matcher = DrugMatcher(db_path=db_path)
+        # DrugMatcher tự quản lý DatabaseCore, không cần truyền db_path
+        self.matcher = DrugMatcher()
     
     async def process(self, request: MatchingRequest) -> MatchingResponse:
         """
