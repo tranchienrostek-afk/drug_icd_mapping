@@ -1160,6 +1160,16 @@
                 respData = JSON.parse(log.response_body);
             } catch { respData = { error: "Không thể parse JSON (có thể bị cắt cụt do quá dài)" }; }
 
+            // DEBUG: Log parsed data to help identify structure issues
+            console.log('=== REQUEST DETAIL DEBUG ===');
+            console.log('Log object:', log);
+            console.log('Endpoint:', log.endpoint);
+            console.log('Response body (raw):', log.response_body);
+            console.log('Parsed respData:', respData);
+            console.log('respData.results:', respData.results);
+            console.log('respData.matched_items:', respData.matched_items);
+            console.log('============================');
+
             let matchedCount = 0;
             let unmatchedCount = 0;
 
@@ -1199,22 +1209,33 @@
                 unmatchedHeader.innerHTML = sharedHeader;
 
                 const results = respData.results || [];
-                results.forEach(r => {
-                    const isFound = r.role || r.validity === 'valid';
-                    const targetBody = isFound ? matchedBody : unmatchedBody;
-                    if (isFound) matchedCount++; else unmatchedCount++;
 
-                    targetBody.innerHTML += `
-                        <tr class="${isFound ? '' : 'table-danger'}">
-                            <td class="fw-bold">${r.name || '-'}</td>
-                            <td><code>${r.id || '-'}</code></td>
-                            <td><span class="badge bg-light text-dark border">${r.category || '-'}</span></td>
-                            <td><span class="badge ${r.validity === 'valid' ? 'bg-success' : 'bg-warning'}">${r.validity || '-'}</span></td>
-                            <td class="text-primary fw-bold">${r.role || '-'}</td>
-                            <td class="small text-muted">${r.explanation || '-'}</td>
-                        </tr>
-                    `;
-                });
+                // Check for parse/data issues
+                if (respData.error) {
+                    matchedBody.innerHTML = `<tr><td colspan="6" class="text-danger text-center">${respData.error}</td></tr>`;
+                } else if (results.length === 0) {
+                    matchedBody.innerHTML = `<tr><td colspan="6" class="text-muted text-center">
+                        Không có kết quả trong response_body. 
+                        <br><small>Raw: ${(log.response_body || '').substring(0, 200)}...</small>
+                    </td></tr>`;
+                } else {
+                    results.forEach(r => {
+                        const isFound = r.role || r.validity === 'valid';
+                        const targetBody = isFound ? matchedBody : unmatchedBody;
+                        if (isFound) matchedCount++; else unmatchedCount++;
+
+                        targetBody.innerHTML += `
+                            <tr class="${isFound ? '' : 'table-danger'}">
+                                <td class="fw-bold">${r.name || '-'}</td>
+                                <td><code>${r.id || '-'}</code></td>
+                                <td><span class="badge bg-light text-dark border">${r.category || '-'}</span></td>
+                                <td><span class="badge ${r.validity === 'valid' ? 'bg-success' : 'bg-warning'}">${r.validity || '-'}</span></td>
+                                <td class="text-primary fw-bold">${r.role || '-'}</td>
+                                <td class="small text-muted">${r.explanation || '-'}</td>
+                            </tr>
+                        `;
+                    });
+                }
             }
 
             // 3. Set Final Counts

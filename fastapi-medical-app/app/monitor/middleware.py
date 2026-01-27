@@ -34,21 +34,39 @@ class ApiMonitorMiddleware(BaseHTTPMiddleware):
             monitor_logger.error(f"Middleware call_next failed: {e}")
             raise e
 
-        # 2. Capture response body
+        # 2. Capture response body - handle different response types
         response_body_bytes = b""
+        
+        # StreamingResponse needs special handling - consume and recreate iterator
         if isinstance(response, StreamingResponse):
             content = b""
             async for chunk in response.body_iterator:
                 content += chunk
             response_body_bytes = content
             
-            # Recreate iterator
+            # Recreate iterator so client still gets data
             async def body_generator():
                 yield content
             response.body_iterator = body_generator()
-        else:
-            if hasattr(response, "body"):
-                response_body_bytes = response.body
+        
+        # Regular Response with body attribute
+        elif hasattr(response, "body"):
+            response_body_bytes = response.body
+        
+        # JSONResponse or other types - try to get body
+        elif hasattr(response, "body_iterator"):
+            try:
+                content = b""
+                async for chunk in response.body_iterator:
+                    content += chunk
+                response_body_bytes = content
+                
+                # Recreate iterator
+                async def body_gen():
+                    yield content
+                response.body_iterator = body_gen()
+            except Exception:
+                pass
 
         latency_ms = (time.time() - start_time) * 1000
         

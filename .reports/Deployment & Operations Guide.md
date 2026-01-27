@@ -455,6 +455,7 @@ docker system prune -a
 | ContainerConfig KeyError | Bug docker-compose 1.29.2: Dùng `docker-compose rm -f -s web && docker-compose up -d web` |
 | DrugMatcher db_path error | Sửa `DrugMatcher(db_path=db_path)` → `DrugMatcher()` |
 | Restart không update code | Code trong image, restart chỉ restart container. Cần rebuild hoặc patch |
+| Docker Conflict (CI/CD) | Tên container bị trùng. Cần `docker rm -f <container_name> || true` trước khi up |
 
 ---
 
