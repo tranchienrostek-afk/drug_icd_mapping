@@ -276,45 +276,47 @@ def process_raw_log(batch_id: str, text_content: str) -> dict:
         #     try: ... lookup logic ...
         #     except: pass
 
-        # 5. WRITE TO TEMP DB (WRITE PHASE)
+        # 5. WRITE TO DB (WRITE PHASE)
 
-        # Connect to MAIN DB for Lookups (Read-Only)
-        conn_main = sqlite3.connect(DB_PATH)
-        conn_main.row_factory = sqlite3.Row
-        cursor_main = conn_main.cursor()
-
-        # 5. WRITE DIRECTLY TO MAIN DB (FIX: No more temp DB copy)
-        # Now we write directly to main DB with proper locking
-        conn = sqlite3.connect(DB_PATH, timeout=60.0)
-        conn.execute("PRAGMA journal_mode=DELETE;")  # Avoid WAL issues on Windows
-        conn.row_factory = sqlite3.Row
+        # Connect using DatabaseCore
+        from app.database.core import DatabaseCore
+        db_core = DatabaseCore() # Will pick up DB_TYPE from env
+        conn = db_core.get_connection()
         cursor = conn.cursor()
         
-        # Explicitly Create Base Table in Temp DB
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS knowledge_base (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                drug_name TEXT,
-                drug_name_norm TEXT,
-                drug_ref_id INTEGER,
-                disease_icd TEXT,
-                disease_name TEXT,
-                disease_name_norm TEXT,
-                disease_ref_id INTEGER,
-                secondary_disease_icd TEXT,
-                secondary_disease_name TEXT,
-                secondary_disease_name_norm TEXT,
-                secondary_disease_ref_id INTEGER,
-                treatment_type TEXT,
-                tdv_feedback TEXT,
-                symptom TEXT,
-                prescription_reason TEXT,
-                frequency INTEGER DEFAULT 1,
-                confidence_score REAL DEFAULT 0.0,
-                batch_id TEXT,
-                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
+        # Ensure schema (idempotent)
+        # 0. Base Table
+        # Note: Core usually handles this, but for robustness in ETL we double check or rely on Core.
+        # Postgres compatible check:
+        if db_core.db_type == 'sqlite':
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS knowledge_base (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    drug_name TEXT,
+                    drug_name_norm TEXT,
+                    drug_ref_id INTEGER,
+                    disease_icd TEXT,
+                    disease_name TEXT,
+                    disease_name_norm TEXT,
+                    disease_ref_id INTEGER,
+                    secondary_disease_icd TEXT,
+                    secondary_disease_name TEXT,
+                    secondary_disease_name_norm TEXT,
+                    secondary_disease_ref_id INTEGER,
+                    treatment_type TEXT,
+                    tdv_feedback TEXT,
+                    symptom TEXT,
+                    prescription_reason TEXT,
+                    frequency INTEGER DEFAULT 1,
+                    confidence_score REAL DEFAULT 0.0,
+                    batch_id TEXT,
+                    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+        else:
+            # Postgres (Mainly handled by Core, but if running standalone...)
+            # We assume table exists.
+            pass
         
         _ensure_kb_columns(cursor)
         conn.commit()
@@ -337,12 +339,12 @@ def process_raw_log(batch_id: str, text_content: str) -> dict:
                 if drug_ref_id: stats["drugs_matched"] += 1
                 
                 # === PRIMARY DISEASE ===
-                primary_icd_raw = (row.get('Mã ICD (Chính)', '') or row.get('benh_chinh', '') or '').strip()
+                primary_icd_raw = (row.get('Mã ICD (Chính)', '') or row.get('benh_chinh', '') or row.get('?column?', '') or '').strip()
                 if not primary_icd_raw:
                     stats["errors"] += 1
                     continue
                 disease_icd, disease_name = parse_icd_field(primary_icd_raw)
-                disease_ref_id = lookup_disease_ref_id(cursor_main, disease_icd)
+                disease_ref_id = lookup_disease_ref_id(cursor, disease_icd) # Use same cursor
                 if disease_ref_id: stats["diseases_matched"] += 1
                 
                 # === SECONDARY ===
@@ -350,7 +352,7 @@ def process_raw_log(batch_id: str, text_content: str) -> dict:
                 secondary_raw = (row.get('Bệnh phụ', '') or row.get('benh_phu', '') or row.get('Benh_phu', '') or '').strip()
                 secondary_icd, secondary_name = parse_secondary_disease_field(secondary_raw)
                 secondary_name_norm = normalize_text(secondary_name) if secondary_name else ''
-                secondary_ref_id = lookup_disease_ref_id(cursor_main, secondary_icd)
+                secondary_ref_id = lookup_disease_ref_id(cursor, secondary_icd)
                 
                 
                  # === OTHER FIELDS ===
@@ -365,11 +367,25 @@ def process_raw_log(batch_id: str, text_content: str) -> dict:
                 prescription_reason = (row.get('Lý do kê đơn', '') or row.get('ly_do', '') or row.get('Ly_do', '') or '').strip()
 
                 # === UPSERT ===
+                # DB Agnostic Query
                 cursor.execute("SELECT id, frequency FROM knowledge_base WHERE drug_name_norm = ? AND disease_icd = ?", (drug_name_norm, disease_icd))
                 existing = cursor.fetchone()
                 
                 if existing:
-                    new_freq = (existing['frequency'] or 0) + 1
+                    # Handle dict access for PG or SQLite (Core returns dict-like usually, but wrapper returns tuple from fetchone if generic? 
+                    # Wrapper proxies fetchone.
+                    # If PG RealDictCursor -> dict. If SQLite dict_factory -> dict.
+                    # Safe logic:
+                    if isinstance(existing, dict):
+                         freq = existing.get('frequency', 0)
+                         row_id = existing.get('id')
+                    else:
+                         # Fallback if wrapper fails to wrap row factory
+                         # Assuming id is 0, freq is 1 (order of select)
+                         row_id = existing[0]
+                         freq = existing[1]
+                    
+                    new_freq = (freq or 0) + 1
                     cursor.execute("""
                         UPDATE knowledge_base 
                         SET frequency = ?, drug_ref_id = COALESCE(?, drug_ref_id),
@@ -379,7 +395,7 @@ def process_raw_log(batch_id: str, text_content: str) -> dict:
                             prescription_reason = COALESCE(?, prescription_reason),
                             last_updated = CURRENT_TIMESTAMP
                         WHERE id = ?
-                    """, (new_freq, drug_ref_id, treatment_type or None, tdv_feedback or None, symptom or None, prescription_reason or None, existing['id']))
+                    """, (new_freq, drug_ref_id, treatment_type or None, tdv_feedback or None, symptom or None, prescription_reason or None, row_id))
                     stats["updated"] += 1
                 else:
                     cursor.execute("""
@@ -401,12 +417,13 @@ def process_raw_log(batch_id: str, text_content: str) -> dict:
                     print(f"[ETL] Progress: {processed_count}/{len(rows)} rows processed...", flush=True)
                     
             except Exception as row_e:
+                print(f"[ETL] Error processing row: {row_e}", flush=True)
                 stats["errors"] += 1
         
         conn.commit()
         conn.close() 
-        try: conn_main.close()
-        except: pass
+        # try: conn_main.close()
+        # except: pass
         
         # FIX: No longer copying temp DB - data is already in main DB
         print(f"[ETL] Batch {batch_id} written directly to main DB.", flush=True)

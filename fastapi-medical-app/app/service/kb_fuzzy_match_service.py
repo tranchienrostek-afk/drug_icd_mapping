@@ -2,7 +2,6 @@
 KB Fuzzy Match Service - Fuzzy matching for knowledge_base drug names.
 Uses TF-IDF + RapidFuzz similar to DrugSearchService, but on knowledge_base data.
 """
-import sqlite3
 import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
@@ -41,10 +40,7 @@ class KBFuzzyMatchService:
         if self.cache_loaded:
             return
         
-        # Use raw connection (no dict factory) for simple list extraction
-        import sqlite3
-        from app.database.core import DB_PATH
-        conn = sqlite3.connect(DB_PATH)
+        conn = self.db_core.get_connection()
         cursor = conn.cursor()
         
         try:
@@ -59,7 +55,25 @@ class KBFuzzyMatchService:
             rows = cursor.fetchall()
             print(f"[KBFuzzyMatch] Query returned {len(rows)} rows")
             
-            self.drug_names = [row[0] for row in rows if row[0] and row[0].strip()]
+            # Handle row access (Dict vs Tuple)
+            # If Dict (PG RealDictCursor or SQLite dict_factory via core) -> row['drug_name_norm']
+            # If Tuple (raw) -> row[0]
+            # Since Core standardizes on dict-like usually, but let's be safe.
+            
+            # Actually core returns dicts by default for sqlite (dict_factory) and PG (RealDictCursor).
+            # So row['drug_name_norm'] is safe.
+            # But wait, if someone didn't use dict_factory...
+            # DatabaseCore: 
+            # SQLite -> dict_factory
+            # Postgres -> RealDictCursor
+            # So always dict access.
+            
+            self.drug_names = []
+            for row in rows:
+                val = row['drug_name_norm'] if isinstance(row, dict) else row[0]
+                if val and val.strip():
+                    self.drug_names.append(val)
+
             print(f"[KBFuzzyMatch] Filtered to {len(self.drug_names)} drug names")
             
             if self.drug_names:
@@ -182,7 +196,7 @@ class KBFuzzyMatchService:
         
         # Query knowledge_base with the matched drug name + ICD
         conn = self.db_core.get_connection()
-        conn.row_factory = sqlite3.Row
+        # conn.row_factory = sqlite3.Row # DatabaseCore handles this
         cursor = conn.cursor()
         
         try:
@@ -195,7 +209,10 @@ class KBFuzzyMatchService:
                     frequency
                 FROM knowledge_base
                 WHERE drug_name_norm = ? AND disease_icd = ?
-                ORDER BY last_updated DESC
+                ORDER BY 
+                    (CASE WHEN tdv_feedback IS NOT NULL AND tdv_feedback != '' AND tdv_feedback != 'None' AND tdv_feedback != 'null' THEN 1 ELSE 0 END) DESC,
+                    frequency DESC,
+                    last_updated DESC
                 LIMIT 1
             """, (match['drug_name_norm'], disease_icd))
             

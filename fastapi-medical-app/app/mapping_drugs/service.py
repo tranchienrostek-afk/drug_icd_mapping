@@ -19,10 +19,16 @@ from .models import (
     MatchingSummary, AuditTrail
 )
 
-# Try to import AI matcher (optional - won't fail if unavailable)
-# Try to import AI matcher
-from .ai_matcher import AISemanticMatcher, ai_match_drugs_sync
-_ai_matcher_available = True
+# Try# Lazy imports để tránh lỗi khi chưa cài thư viện
+_rapidfuzz_available = False
+_sklearn_available = False
+_ai_matcher_available = False
+
+try:
+    from .ai_matcher import AISemanticMatcher
+    _ai_matcher_available = True
+except ImportError:
+    pass
 
 # Setup logging
 logger = logging.getLogger("mapping_drugs.service")
@@ -146,13 +152,10 @@ class ClaimsMedicineMatchingService:
             # Prepare data for AI
             batch_claims = [enriched_claims[i] for i in unmatched_indices]
             
-            # Extract config
-            ai_model = request.config.ai_model if request.config else None
-            
             # Call AI (Async directly)
             try:
                 # Use a fresh instance
-                matcher = AISemanticMatcher(model=ai_model)
+                matcher = AISemanticMatcher()
                 ai_result = await matcher.match_claims_medicine(
                     claims=batch_claims,
                     medicine=enriched_medicine,
@@ -191,22 +194,37 @@ class ClaimsMedicineMatchingService:
                         else:
                             status = "weak_match"  # Default fallback
                             
-                        matched_pairs[found_idx] = MatchedPair(
-                            claim_id=claim_id,
-                            medicine_id=med_id,
-                            claim_service=ai_match.get("claim_service"),
-                            medicine_service=med_service,
-                            match_status=status,
-                            confidence_score=ai_match.get("confidence_score"),
-                            decision="manual_review", # AI matches always suggest review
-                            evidence=MatchEvidence(
-                                text_similarity=0.0, # AI semantic match
-                                amount_similarity=0.0,
-                                drug_knowledge_match=True, # AI knowledge
-                                method=f"AI_MATCH ({ai_result.get('ai_model')})",
-                                notes=ai_match.get("reasoning", "AI Match")
+                        # Get claim service name either from AI or original data (Robust Fallback)
+                        ai_claim_service = ai_match.get("claim_service")
+                        if not ai_claim_service:
+                            ai_claim_service = matched_pairs[found_idx].claim_service
+                        
+                        # Normalize confidence score (handle 0-100 vs 0-1)
+                        conf = ai_match.get("confidence_score", 0.0)
+                        if conf > 1.0:
+                            conf = conf / 100.0
+                        conf = max(0.0, min(1.0, conf))
+                            
+                        try:
+                            matched_pairs[found_idx] = MatchedPair(
+                                claim_id=claim_id,
+                                medicine_id=med_id,
+                                claim_service=ai_claim_service,
+                                medicine_service=med_service,
+                                match_status=status,
+                                confidence_score=conf,
+                                decision="manual_review", # AI matches always suggest review
+                                evidence=MatchEvidence(
+                                    text_similarity=0.0, # AI semantic match
+                                    amount_similarity=0.0,
+                                    drug_knowledge_match=True, # AI knowledge
+                                    method=f"AI_MATCH ({ai_result.get('ai_model')})",
+                                    notes=ai_match.get("reasoning", "AI Match")
+                                )
                             )
-                        )
+                        except Exception as ve:
+                            logger.error(f"[SERVICE] Validation error creating MatchedPair from AI: {ve}")
+                            logger.error(f"[SERVICE] AI Match data: {ai_match}")
                         logger.info(f"[SERVICE] Step 3.5: 🤖 AI RESCUED '{claim_id}' -> '{med_service}'")
                     else:
                         logger.warning(f"[SERVICE] Step 3.5: AI returned result for unknown claim_id='{claim_id}'")
@@ -242,15 +260,136 @@ class ClaimsMedicineMatchingService:
         logger.info(f"[SERVICE] Risk Level: {summary.risk_level}")
         logger.info(f"{'='*60}")
         
-        return MatchingResponse(
-            request_id=request_id,
-            status="processed",
-            processing_timestamp=datetime.utcnow(),
-            summary=summary,
-            results=[r for r in matched_pairs if r.match_status != "no_match"],
-            anomalies=anomalies,
-            audit_trail=audit
-        )
+        try:
+            return MatchingResponse(
+                request_id=request_id,
+                status="processed",
+                processing_timestamp=datetime.utcnow(),
+                summary=summary,
+                results=[r for r in matched_pairs if r.match_status != "no_match"],
+                anomalies=anomalies,
+                audit_trail=audit
+            )
+        except Exception as e:
+            logger.error(f"[SERVICE] Failed to create MatchingResponse: {e}")
+            raise e
+        
+    async def process_v2(self, request: MatchingRequest) -> MatchingResponse:
+        """
+        Xử lý matching request v2 - TRỰC TIẾP QUA AI.
+        Bỏ qua mọi bước chuẩn hóa và database enrichment.
+        """
+        start_time = time.time()
+        request_id = request.request_id or f"req-v2-{uuid.uuid4().hex[:8]}"
+        
+        logger.info(f"")
+        logger.info(f"{'='*60}")
+        logger.info(f"[SERVICE] ========== NEW MATCH_V2 REQUEST (AI DIRECT) ==========")
+        logger.info(f"[SERVICE] Request ID: {request_id}")
+        logger.info(f"[SERVICE] Claims Count: {len(request.claims)}")
+        logger.info(f"[SERVICE] Medicine Count: {len(request.medicine)}")
+        logger.info(f"{'='*60}")
+        
+        if not _ai_matcher_available:
+            logger.error("[SERVICE] AI Matcher not available for match_v2")
+            raise Exception("AI Matcher is not available. Please check environment variables and library installation.")
+
+        # Prepare raw data for AI
+        raw_claims = [c.model_dump() if hasattr(c, 'model_dump') else dict(c) for c in request.claims]
+        raw_medicine = [m.model_dump() if hasattr(m, 'model_dump') else dict(m) for m in request.medicine]
+        
+        # Call AI directly
+        try:
+            matcher = AISemanticMatcher()
+            
+            ai_result = await matcher.match_claims_medicine(
+                claims=raw_claims,
+                medicine=raw_medicine,
+                db_enrichment={"context": "DIRECT_AI_MATCH_V2"}
+            )
+            
+            ai_matches = ai_result.get("matches", [])
+            matched_pairs = []
+            
+            for ai_match in ai_matches:
+                # Find original claim to get its service name if AI didn't return it
+                cid = ai_match.get("claim_id")
+                mid = ai_match.get("medicine_id")
+                
+                # Get claim service name either from AI or original data
+                claim_service = ai_match.get("claim_service")
+                if not claim_service:
+                    original_claim = next((c for c in raw_claims if (c.get('id') or c.get('claim_id')) == cid), None)
+                    if original_claim:
+                        claim_service = original_claim.get('service') or original_claim.get('service_name')
+                
+                # Get medicine service name either from AI or original data
+                medicine_service = ai_match.get("medicine_service")
+                if not medicine_service and mid:
+                    original_med = next((m for m in raw_medicine if (m.get('id') or m.get('medicine_id')) == mid), None)
+                    if original_med:
+                        medicine_service = original_med.get('service') or original_med.get('service_name')
+
+                # Construct MatchedPair from AI result
+                raw_status = ai_match.get("match_status", "uncertain").lower()
+                if raw_status == "equivalent" or raw_status == "matched":
+                    status = "matched"
+                elif "partial" in raw_status:
+                    status = "partially_matched"
+                else:
+                    status = raw_status if raw_status in ["matched", "partially_matched", "weak_match", "no_match"] else "weak_match"
+                
+                matched_pairs.append(MatchedPair(
+                    claim_id=cid,
+                    medicine_id=mid,
+                    claim_service=claim_service or "Unknown",
+                    medicine_service=medicine_service,
+                    match_status=status,
+                    confidence_score=ai_match.get("confidence_score", 0.0),
+                    decision="manual_review", # AI results always suggest review in v2 as well
+                    evidence=MatchEvidence(
+                        text_similarity=0.0,
+                        amount_similarity=0.0,
+                        drug_knowledge_match=True,
+                        method=f"DIRECT_AI ({ai_result.get('ai_model')})",
+                        notes=ai_match.get("reasoning", "Direct AI Match")
+                    )
+                ))
+            
+            # Anomalies detection (simplified for v2)
+            anomalies = self._detect_anomalies(
+                raw_claims, 
+                raw_medicine, 
+                matched_pairs
+            )
+            
+            # Summary
+            summary = self._build_summary(matched_pairs, request.claims, request.medicine)
+            
+            # Audit trail
+            processing_time = (time.time() - start_time) * 1000
+            audit = AuditTrail(
+                normalization_applied=False,
+                fuzzy_matching=False,
+                drug_ontology_used=False,
+                amount_used_as_supporting_signal=False,
+                processing_time_ms=round(processing_time, 2)
+            )
+            
+            logger.info(f"[SERVICE] ========== MATCH_V2 COMPLETE ==========")
+            return MatchingResponse(
+                request_id=request_id,
+                status="processed",
+                processing_timestamp=datetime.utcnow(),
+                summary=summary,
+                results=[r for r in matched_pairs if r.match_status != "no_match"],
+                anomalies=anomalies,
+                audit_trail=audit
+            )
+            
+        except Exception as e:
+            logger.error(f"[SERVICE] match_v2 AI process failed: {e}")
+            raise e
     
     def _enrich_items(self, items: list, item_type: str) -> List[Dict]:
         """Làm giàu items với DB info."""

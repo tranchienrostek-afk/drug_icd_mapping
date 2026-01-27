@@ -1,0 +1,40 @@
+{
+    "request_id": "string",
+    "claims": [
+        {
+            "id": "1",
+            "service_name": "MEDOVENT 30 10X10",
+            "description": "string",
+            "amount": 10000
+        },
+        {
+            "id": "2",
+            "service_name": "PANTOLOC 40MG TAKEDA 1X7",
+            "description": "string",
+            "amount": 10000
+        },
+        {
+            "id": "3",
+            "service_name": "Thăm dò chức năng",
+            "description": "string",
+            "amount": 10000
+        }
+    ],
+    "medicines": [
+        {
+            "id": "1",
+            "service_name": "Ambroxol hydrochloride (Medovent 30mg)",
+            "description": "Ngày uống 2 viên chia 2 lần, sáng 1 viên, tối 1 viên (sau ăn)",
+            "amount": 0
+        },
+        {
+            "id": "2",
+            "service_name": "Pantoprazole (dưới dạng Pantoprazole sodium sesquihydrate)(Pantoloc 40mg)",
+            "description": "Ngày uống 1 viên (trước ăn sáng 30 phút)",
+            "amount": 0
+        }
+    ],
+    "config": {
+        "ai_model": "random-garbage-model-name-v123"
+    }
+}

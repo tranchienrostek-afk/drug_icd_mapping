@@ -1,14 +1,20 @@
 from fastapi import FastAPI
+from dotenv import load_dotenv
+import os
+
+# Load env vars (Explicit path)
+env_path = os.path.join(os.path.dirname(__file__), "..", ".env")
+load_dotenv(env_path)
+
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from app.api import drugs, diseases, analysis, admin, data_management, consult
 from app.core.middleware import LogMiddleware
-from app.monitor.middleware import CircuitBreakerMiddleware
+from app.monitor.middleware import CircuitBreakerMiddleware, ApiMonitorMiddleware
 from app.monitor.router import router as monitor_router
 from app.monitor.service import clean_old_logs, setup_monitor_logger
 from app.mapping_drugs.router import router as mapping_router
-import os
 
 app = FastAPI(title="Medical API System", version="1.0.0")
 
@@ -23,6 +29,9 @@ app.add_middleware(
 
 # Register Circuit Breaker (First line of defense)
 app.add_middleware(CircuitBreakerMiddleware)
+
+# Register API Monitor (Logging & Stats)
+app.add_middleware(ApiMonitorMiddleware)
 
 # Register logging middleware
 app.add_middleware(LogMiddleware)
@@ -55,15 +64,15 @@ async def startup_event():
 @app.get("/api/v1/health")
 def health_check():
     """Health check endpoint for monitoring and load balancers."""
-    import sqlite3
-    import os
+    from app.database.core import DatabaseCore
     
-    db_path = os.getenv("DB_PATH", "app/database/medical.db")
     db_status = "ok"
-    
     try:
-        conn = sqlite3.connect(db_path)
-        conn.execute("SELECT 1")
+        # Use DatabaseCore to support both SQLite and Postgres
+        core = DatabaseCore()
+        conn = core.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1")
         conn.close()
     except Exception as e:
         db_status = f"error: {str(e)}"

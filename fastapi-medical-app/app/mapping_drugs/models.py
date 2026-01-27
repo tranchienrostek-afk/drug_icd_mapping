@@ -2,8 +2,7 @@
 Pydantic Models cho Claims vs Medicine Matching API
 ====================================================
 """
-
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 from typing import List, Optional, Literal
 from datetime import datetime
 
@@ -12,10 +11,6 @@ from datetime import datetime
 # INPUT MODELS
 # =============================================================================
 
-class MatchConfig(BaseModel):
-    """Cấu hình cho quá trình matching."""
-    ai_model: Optional[str] = Field(None, description="Model AI sử dụng (e.g., gpt-4o-mini)")
-    
 class ClaimItem(BaseModel):
     """Một dòng trong danh sách Claims (yêu cầu bồi thường)."""
     claim_id: str = Field(..., description="ID duy nhất của claim", alias="id")
@@ -23,8 +18,7 @@ class ClaimItem(BaseModel):
     description: Optional[str] = Field(None, description="Mô tả chi tiết")
     amount: Optional[float] = Field(None, description="Số tiền (VND)")
     
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class MedicineItem(BaseModel):
@@ -34,8 +28,7 @@ class MedicineItem(BaseModel):
     description: Optional[str] = Field(None, description="Mô tả chi tiết")
     amount: Optional[float] = Field(None, description="Số tiền (VND)")
 
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class MatchingRequest(BaseModel):
@@ -43,10 +36,8 @@ class MatchingRequest(BaseModel):
     request_id: Optional[str] = Field(None, description="ID của request (để tracking)")
     claims: List[ClaimItem] = Field(..., description="Danh sách Claims")
     medicine: List[MedicineItem] = Field(..., description="Danh sách Medicine", alias="medicines")
-    config: Optional[MatchConfig] = Field(None, description="Cấu hình matching")
 
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True, extra="ignore")
 
 
 # =============================================================================

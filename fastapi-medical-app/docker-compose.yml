@@ -3,15 +3,20 @@ version: '3.8'
 services:
   web:
     build: .
+    container_name: drug_icd_mapping_prod_web
     ports:
       - "8000:8000"
     volumes:
-      - .:/app
+      - ./data:/app/data
     env_file:
       - .env
     deploy:
       resources:
         limits:
-          memory: 1G
+          memory: 4G
         reservations:
-          memory: 512M
+          memory: 2G
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    # Không dùng depends_on vì kết nối postgres-db container bên ngoài

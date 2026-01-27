@@ -4,167 +4,483 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Service Monitor</title>
+    <title>System Monitor | Medical API</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
     <style>
+        :root {
+            --bg-body: #0a0b10;
+            --bg-card: rgba(23, 25, 35, 0.7);
+            --bg-card-hover: rgba(30, 33, 46, 0.9);
+            --accent-blue: #3b82f6;
+            --accent-purple: #8b5cf6;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --border: rgba(255, 255, 255, 0.08);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
         body {
-            font-family: 'Segoe UI', sans-serif;
-            background: #1a1a1a;
-            color: #fff;
-            text-align: center;
-            padding: 20px;
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-body);
+            background-image:
+                radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 0%, rgba(139, 92, 246, 0.15) 0px, transparent 50%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 2rem;
+            line-height: 1.5;
         }
 
         .container {
-            max-width: 800px;
+            max-width: 1200px;
             margin: 0 auto;
         }
 
-        .card {
-            background: #2d2d2d;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
         }
 
-        h1 {
-            color: #00ff88;
+        .title-area h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+            background: linear-gradient(to right, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
-        .stat-grid {
+        .system-status {
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--accent-green);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+            box-shadow: 0 0 10px currentColor;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.4;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.5rem;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1rem;
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .tab-btn.active {
+            color: var(--text-primary);
+        }
+
+        .tab-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: -0.6rem;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: var(--accent-blue);
+            box-shadow: 0 0 10px var(--accent-blue);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
         }
 
-        .stat-item {
-            padding: 10px;
-            background: #333;
-            border-radius: 5px;
+        .card {
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            transition: transform 0.2s, background 0.2s;
         }
 
-        .label {
-            font-size: 0.9em;
-            color: #aaa;
+        .card:hover {
+            background: var(--bg-card-hover);
+            transform: translateY(-2px);
         }
 
-        .value {
-            font-size: 1.5em;
-            font-weight: bold;
+        .card-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
         }
 
-        .status-ok {
-            color: #00ff88;
+        .card-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
         }
 
-        .status-warn {
-            color: #ffcc00;
+        .card-sub {
+            font-size: 0.875rem;
+            color: var(--accent-green);
         }
 
-        .status-crit {
-            color: #ff4444;
+        /* Logs Table */
+        .table-container {
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 1rem;
+            overflow: hidden;
         }
 
-        #last-updated {
-            font-size: 0.8em;
-            color: #666;
-            margin-top: 10px;
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 1rem;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border);
+        }
+
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.875rem;
+            vertical-align: middle;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .status-badge {
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .status-200 {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--accent-green);
+        }
+
+        .status-err {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--accent-red);
+        }
+
+        .btn-detail {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            color: var(--accent-blue);
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            transition: all 0.2s;
+        }
+
+        .btn-detail:hover {
+            background: var(--accent-blue);
+            color: white;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: #171923;
+            width: 90%;
+            max-width: 800px;
+            max-height: 80vh;
+            border-radius: 1rem;
+            border: 1px solid var(--glass-border);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+            overflow-y: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8125rem;
+            background: #0f111a;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            color: #60a5fa;
+        }
+
+        .json-key {
+            color: #a78bfa;
+        }
+
+        .json-string {
+            color: #10b981;
+        }
+
+        .json-number {
+            color: #f59e0b;
         }
     </style>
 </head>
 
 <body>
     <div class="container">
-        <h1>🏥 System Monitor</h1>
-        <div class="card">
-            <h2>Resources</h2>
-            <div class="stat-grid">
-                <div class="stat-item">
-                    <div class="label">CPU Usage (Core)</div>
-                    <div class="value" id="cpu-val">--%</div>
-                    <div class="label" id="cpu-detail">App: --% / Sys: --%</div>
+        <header>
+            <div class="title-area">
+                <h1>🏥 API Monitoring</h1>
+            </div>
+            <div class="system-status">
+                <div class="status-dot"></div>
+                <span id="system-status-text">Health: OK</span>
+            </div>
+        </header>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('summary')">Summary</button>
+            <button class="tab-btn" onclick="switchTab('detail')">Request Detail</button>
+        </div>
+
+        <!-- SUMMARY TAB -->
+        <div id="tab-summary" class="tab-content active">
+            <div class="stats-grid">
+                <div class="card">
+                    <div class="card-label">Consult Integrated</div>
+                    <div class="card-value" id="count-consult">0</div>
+                    <div class="card-sub" id="sub-consult">↑ Processing normal</div>
                 </div>
-                <div class="stat-item">
-                    <div class="label">RAM Usage</div>
-                    <div class="value" id="ram-usage">--%</div>
-                    <div class="label" id="ram-detail">App: 0MB / Total: 0GB</div>
+                <div class="card">
+                    <div class="card-label">Mapping Drugs</div>
+                    <div class="card-value" id="count-mapping">0</div>
+                    <div class="card-sub" id="sub-mapping">↑ Processing normal</div>
                 </div>
-                <div class="stat-item">
-                    <div class="label">Disk Usage</div>
-                    <div class="value" id="disk-val">--%</div>
-                </div>
-                <div class="stat-item">
-                    <div class="label">Status</div>
-                    <div class="value" id="status-val">Checking...</div>
+                <div class="card">
+                    <div class="card-label">System CPU / RAM</div>
+                    <div class="card-value" id="sys-load">--/--%</div>
+                    <div class="card-sub" id="sub-sys">Healthy resources</div>
                 </div>
             </div>
-            <div id="last-updated">Last Updated: Never</div>
+        </div>
+
+        <!-- DETAIL TAB -->
+        <div id="tab-detail" class="tab-content">
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>ID</th>
+                            <th>Endpoint</th>
+                            <th>Status</th>
+                            <th>Lat (ms)</th>
+                            <th>Match/Un</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logs-body">
+                        <!-- Logs will be inserted here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL -->
+    <div id="json-modal" class="modal" onclick="closeModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3 id="modal-title">Request ID</h3>
+                <button class="close-btn" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <h4>Response JSON</h4>
+                <pre id="json-viewer"></pre>
+            </div>
         </div>
     </div>
 
     <script>
-        function formatBytes(bytes, decimals = 2) {
-            if (bytes === 0) return '0 Bytes';
-            const k = 1024;
-            const dm = decimals < 0 ? 0 : decimals;
-            const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+        let currentLogs = [];
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+            document.querySelector(`.tab-btn[onclick="switchTab('${tab}')"]`).classList.add('active');
+            document.getElementById(`tab-${tab}`).classList.add('active');
+
+            if (tab === 'detail') fetchLogs();
         }
 
         async function fetchStats() {
             try {
-                const response = await fetch('/api/v1/monitor/stats');
-                if (!response.ok) throw new Error("API Error");
-                const data = await response.json();
+                const res = await fetch('/api/v1/monitor/stats');
+                const data = await res.json();
 
-                // CPU
-                const sysCpu = data.system.cpu;
-                const procCpu = data.process.cpu;
+                // Update counters
+                const endpoints = data.endpoints || {};
+                document.getElementById('count-consult').innerText = endpoints['/api/v1/consult_integrated'] || 0;
+                document.getElementById('count-mapping').innerText = endpoints['/api/v1/mapping/match'] || 0;
 
-                const cpuEl = document.getElementById('cpu-val');
-                // Use System CPU for main indicator (safety), but show App usage below
-                cpuEl.innerText = sysCpu + '%';
-                cpuEl.className = 'value ' + (sysCpu > 90 ? 'status-crit' : (sysCpu > 70 ? 'status-warn' : 'status-ok'));
-                document.getElementById('cpu-detail').innerText = `App: ${procCpu.toFixed(1)}% / Sys: ${sysCpu}%`;
+                // Update system load
+                const cpu = data.system.cpu.toFixed(1);
+                const ram = data.system.ram.percent.toFixed(1);
+                document.getElementById('sys-load').innerText = `${cpu}% / ${ram}%`;
 
-                // RAM
-                const sysRam = data.system.ram;
-                const procRam = data.process.ram;
-
-                const ramEl = document.getElementById('ram-usage');
-                ramEl.innerText = sysRam.percent + '%';
-                ramEl.className = 'value ' + (sysRam.percent > 90 ? 'status-crit' : (sysRam.percent > 70 ? 'status-warn' : 'status-ok'));
-
-                // Detailed comparison: App Usage vs System Total
-                document.getElementById('ram-detail').innerText = `App: ${formatBytes(procRam)} / Total: ${formatBytes(sysRam.total)}`;
-
-                // Disk
-                const disk = data.system.disk;
-                document.getElementById('disk-val').innerText = disk.percent.toFixed(1) + '%';
-
-                // Overall Status
-                const statusEl = document.getElementById('status-val');
-                if (sysCpu > 95 || sysRam.percent > 90) {
-                    statusEl.innerText = 'CRITICAL OVERLOAD';
-                    statusEl.className = 'value status-crit';
-                } else {
-                    statusEl.innerText = 'OPERATIONAL';
-                    statusEl.className = 'value status-ok';
-                }
-
-                document.getElementById('last-updated').innerText = 'Last Updated: ' + new Date().toLocaleTimeString();
-
-            } catch (err) {
-                console.error(err);
-                document.getElementById('status-val').innerText = 'CONNECTION LOST';
-                document.getElementById('status-val').className = 'value status-crit';
-            }
+            } catch (err) { console.error("Stats Error:", err); }
         }
 
-        // Fetch every 3 seconds
+        async function fetchLogs() {
+            try {
+                const res = await fetch('/api/v1/monitor/logs?limit=50');
+                const logs = await res.json();
+                currentLogs = logs;
+
+                const body = document.getElementById('logs-body');
+                body.innerHTML = logs.map((log, index) => `
+                    <tr>
+                        <td style="color:var(--text-secondary)">${new Date(log.timestamp).toLocaleTimeString()}</td>
+                        <td style="font-family:'JetBrains Mono'">${log.request_id || 'N/A'}</td>
+                        <td style="font-weight:600; color:var(--accent-blue)">${log.endpoint.split('/').pop()}</td>
+                        <td><span class="status-badge ${log.status_code < 400 ? 'status-200' : 'status-err'}">${log.status_code}</span></td>
+                        <td>${log.latency_ms.toFixed(0)}</td>
+                        <td>
+                           <span style="color:var(--accent-green)">${log.matched_count}</span> / 
+                           <span style="color:var(--accent-red)">${log.unmatched_count}</span>
+                        </td>
+                        <td><button class="btn-detail" onclick="viewDetail(${index})">Details</button></td>
+                    </tr>
+                `).join('');
+            } catch (err) { console.error("Logs Error:", err); }
+        }
+
+        function viewDetail(index) {
+            const log = currentLogs[index];
+            document.getElementById('modal-title').innerText = "Request ID: " + (log.request_id || "N/A");
+
+            try {
+                const formatted = JSON.stringify(JSON.parse(log.response_body), null, 2);
+                document.getElementById('json-viewer').innerText = formatted;
+            } catch {
+                document.getElementById('json-viewer').innerText = log.response_body;
+            }
+
+            document.getElementById('json-modal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('json-modal').style.display = 'none';
+        }
+
+        // Auto Refresh
         fetchStats();
-        setInterval(fetchStats, 3000);
+        setInterval(fetchStats, 5000);
+        setInterval(() => {
+            if (document.getElementById('tab-detail').classList.contains('active')) fetchLogs();
+        }, 10000);
+
     </script>
 </body>
 

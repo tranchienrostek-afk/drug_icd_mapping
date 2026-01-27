@@ -1,9 +1,13 @@
 name: Deploy to Production
 
+# DISABLED AUTO-DEPLOY - Now requires manual trigger
+# Old trigger: push to main
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "deploy" to confirm'
+        required: true
 
 jobs:
   deploy:

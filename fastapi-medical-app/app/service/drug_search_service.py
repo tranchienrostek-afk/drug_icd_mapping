@@ -51,7 +51,7 @@ class DrugSearchService:
         Returns: { data: dict, confidence: float, source: str } or None
         """
         conn = self.db_core.get_connection()
-        conn.row_factory = sqlite3.Row
+        # conn.row_factory = sqlite3.Row # Moved to core abstraction
         cursor = conn.cursor()
         
         # 1. Prepare variants
@@ -77,7 +77,8 @@ class DrugSearchService:
                     return {"data": dict(row), "confidence": 1.0, "source": f"Database (Exact{' Fallback' if variant != raw_query else ''})"}
 
                 # 2. PARTIAL MATCH
-                cursor.execute("SELECT * FROM drugs WHERE ten_thuoc LIKE ? AND is_verified=1 AND so_dang_ky IS NOT NULL", (f"%{variant}%",))
+                match_op = "ILIKE" if self.db_core.db_type == 'postgres' else "LIKE"
+                cursor.execute(f"SELECT * FROM drugs WHERE ten_thuoc {match_op} ? AND is_verified=1 AND so_dang_ky IS NOT NULL", (f"%{variant}%",))
                 row = cursor.fetchone()
                 if row:
                      return {"data": dict(row), "confidence": 0.95, "source": f"Database (Partial{' Fallback' if variant != raw_query else ''})"}
@@ -124,32 +125,48 @@ class DrugSearchService:
         return self.search_drug_smart_sync(query_name)
 
     def search(self, query):
-        """Legacy Search for FTS (Autocomplete/Simple Search)"""
+        """Legacy Search: FTS (SQLite) or Text Search (Postgres)"""
         if not query: return None
         
         query_clean = normalize_text(query)
-        search_term = " AND ".join([f"{w}*" for w in query_clean.split() if re.match(r'[a-zA-Z0-9]', w)]) if query_clean else ""
-        
-        if not search_term: return None
-
-        sql = "SELECT rowid FROM drugs_fts WHERE drugs_fts MATCH ? ORDER BY rank LIMIT 1"
+        if not query_clean: return None
 
         try:
             conn = self.db_core.get_connection()
             cursor = conn.cursor()
             
-            cursor.execute(sql, (search_term,))
+            if self.db_core.db_type == 'postgres':
+                # Postgres Text Search
+                # Construct query: 'A & B & C'
+                ts_query_str = " & ".join([w for w in query_clean.split() if w.strip()])
+                if not ts_query_str: return None
+                
+                # Use to_tsquery with 'simple' config (matching index config)
+                sql = "SELECT id, * FROM drugs WHERE search_vector @@ to_tsquery('simple', ?) LIMIT 1"
+                cursor.execute(sql, (ts_query_str,))
+            else:
+                # SQLite FTS5
+                # formatting: 'w* AND w*'
+                search_term = " AND ".join([f"{w}*" for w in query_clean.split() if re.match(r'[a-zA-Z0-9]', w)])
+                if not search_term: return None
+
+                sql = "SELECT rowid FROM drugs_fts WHERE drugs_fts MATCH ? ORDER BY rank LIMIT 1"
+                cursor.execute(sql, (search_term,))
+            
             row = cursor.fetchone()
             
             if row:
-                drug_id = row['rowid']
-                cursor.execute("SELECT * FROM drugs WHERE rowid = ?", (drug_id,))
-                full_data = cursor.fetchone()
-                return full_data
+                if self.db_core.db_type == 'postgres':
+                    return dict(row) # Already full row
+                else:
+                    drug_id = row['rowid'] if isinstance(row, dict) else row[0]
+                    cursor.execute("SELECT * FROM drugs WHERE id = ?", (drug_id,)) # Use 'id' alias for rowid
+                    full_data = cursor.fetchone()
+                    return dict(full_data) if full_data else None
 
             return None
-        except sqlite3.Error as e:
-            print(f"SQLite Error: {e}")
+        except Exception as e:
+            print(f"Search Error: {e}")
             return None
         finally:
             conn.close()

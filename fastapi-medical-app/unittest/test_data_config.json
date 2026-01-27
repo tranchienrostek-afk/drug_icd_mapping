@@ -1,0 +1,176 @@
+{
+    "_guide": "File cấu hình test data cho API. Mỗi section tương ứng với một nhóm API.",
+    "_note": "Thay đổi các giá trị trong file này để test với data khác nhau",
+    "drugs": {
+        "search": {
+            "description": "Test tìm kiếm thuốc",
+            "test_cases": [
+                {
+                    "query": "Paracetamol",
+                    "expected_min_results": 0,
+                    "description": "Tìm thuốc phổ biến"
+                },
+                {
+                    "query": "XYZ123NotExist",
+                    "expected_min_results": 0,
+                    "description": "Tìm thuốc không tồn tại"
+                }
+            ]
+        },
+        "identify": {
+            "description": "Test nhận dạng thuốc từ tên",
+            "test_cases": [
+                {
+                    "drugs": [
+                        "Paracetamol 500mg",
+                        "Amoxicillin 250mg"
+                    ],
+                    "description": "Nhận dạng thuốc phổ biến"
+                }
+            ]
+        },
+        "confirm": {
+            "description": "Test lưu thuốc mới vào DB",
+            "test_data": {
+                "ten_thuoc": "TEST_DRUG_UNIT_TEST",
+                "so_dang_ky": "TEST-SDK-999999",
+                "hoat_chat": "Test Active Ingredient",
+                "chi_dinh": "Test Indication",
+                "cong_ty_san_xuat": "Test Company",
+                "tu_dong_nghia": "Test Synonym",
+                "modified_by": "unit_test"
+            }
+        },
+        "staging": {
+            "description": "Test workflow staging (pending -> approve/reject)",
+            "test_data": {
+                "ten_thuoc": "TEST_STAGING_DRUG",
+                "so_dang_ky": "TEST-STAGING-SDK",
+                "hoat_chat": "Staging Active",
+                "chi_dinh": "Staging Indication",
+                "cong_ty_san_xuat": "Staging Company"
+            }
+        }
+    },
+    "diseases": {
+        "lookup": {
+            "description": "Test tra cứu bệnh ICD",
+            "test_cases": [
+                {
+                    "diagnosis": [
+                        {
+                            "name": "Đau đầu",
+                            "icd10": "R51"
+                        },
+                        {
+                            "name": "Tăng huyết áp",
+                            "icd10": "I10"
+                        }
+                    ],
+                    "description": "Tra cứu bệnh phổ biến"
+                }
+            ]
+        }
+    },
+    "consult": {
+        "description": "Test tư vấn phác đồ điều trị",
+        "test_cases": [
+            {
+                "request_id": "test-001",
+                "items": [
+                    {
+                        "id": "drug1",
+                        "name": "Paracetamol 500mg"
+                    },
+                    {
+                        "id": "drug2",
+                        "name": "Amoxicillin 500mg"
+                    }
+                ],
+                "diagnoses": [
+                    {
+                        "code": "J06.9",
+                        "name": "Nhiễm trùng hô hấp cấp",
+                        "type": "MAIN"
+                    },
+                    {
+                        "code": "R51",
+                        "name": "Đau đầu",
+                        "type": "SECONDARY"
+                    }
+                ],
+                "expected_valid_count": 2,
+                "description": "Test phác đồ điều trị cơ bản"
+            }
+        ]
+    },
+    "analysis": {
+        "treatment_analysis": {
+            "description": "Test phân tích điều trị tổng hợp",
+            "test_cases": [
+                {
+                    "drugs": [
+                        "Candesartan 16mg",
+                        "Paracetamol 500mg"
+                    ],
+                    "diagnosis": [
+                        {
+                            "name": "Tăng huyết áp",
+                            "icd10": "I10"
+                        },
+                        {
+                            "name": "Đau đầu",
+                            "icd10": "R51"
+                        }
+                    ],
+                    "description": "Phân tích phác đồ đa bệnh lý"
+                }
+            ]
+        }
+    },
+    "admin": {
+        "drugs_crud": {
+            "description": "Test CRUD thuốc qua Admin API",
+            "test_data": {
+                "ten_thuoc": "ADMIN_TEST_DRUG",
+                "so_dang_ky": "ADMIN-TEST-SDK-001",
+                "hoat_chat": "Admin Test Ingredient",
+                "chi_dinh": "Admin Test Indication",
+                "cong_ty_san_xuat": "Admin Test Company"
+            }
+        },
+        "diseases_crud": {
+            "description": "Test CRUD bệnh qua Admin API",
+            "test_data": {
+                "icd_code": "TEST99",
+                "disease_name": "Admin Test Disease",
+                "chapter_name": "Test Chapter"
+            }
+        },
+        "links_crud": {
+            "description": "Test CRUD liên kết thuốc-bệnh",
+            "test_data": {
+                "sdk": "ADMIN-TEST-SDK-001",
+                "icd_code": "TEST99",
+                "drug_name": "ADMIN_TEST_DRUG",
+                "disease_name": "Admin Test Disease"
+            }
+        }
+    },
+    "data_management": {
+        "ingest": {
+            "description": "Test import CSV vào Knowledge Base",
+            "csv_content": "drug_name,disease_name,icd_code,phan_loai\nTEST_INGEST_DRUG,TEST_INGEST_DISEASE,TEST01,valid",
+            "expected_batch_status": "processing"
+        }
+    },
+    "cleanup": {
+        "prefixes_to_delete": [
+            "TEST_",
+            "ADMIN_TEST_",
+            "TEST-SDK-",
+            "ADMIN-TEST-"
+        ],
+        "description": "Các prefix dùng để xác định test data cần xóa sau khi test xong"
+    }
+}

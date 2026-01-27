@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import os
 from fastapi import APIRouter, UploadFile, File, BackgroundTasks, HTTPException, status, Depends
 from app.services import DrugDbEngine
 from app.service.etl_service import process_raw_log
@@ -18,6 +19,9 @@ def check_ingest_rate_limit():
     Enforce 1 request per 2 minutes for ingest API.
     Raises 429 if cooldown has not passed.
     """
+    if os.getenv("TESTING") == "True":
+        return
+
     global LAST_INGEST_TIME
     now = datetime.now()
     

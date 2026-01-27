@@ -8,7 +8,6 @@ Standalone implementation với 4 tầng matching:
 4. TF-IDF Vector Search (90%)
 """
 
-import sqlite3
 import os
 import logging
 from typing import Optional, Dict, List, Any
@@ -81,20 +80,20 @@ class DrugMatcher:
     FUZZY_THRESHOLD = 85.0       # RapidFuzz score >= 85
     VECTOR_THRESHOLD = 0.75      # Cosine similarity > 0.75
     
-    def __init__(self, db_path: Optional[str] = None):
+    def __init__(self, db_core: Any = None):
         """
         Khởi tạo DrugMatcher.
         
         Args:
-            db_path: Đường dẫn tới medical.db. Nếu None, sẽ tự detect từ env.
+            db_core: Instance của DatabaseCore. Nếu None, sẽ tự khởi tạo.
         """
-        if db_path is None:
-            db_path = os.getenv(
-                "DB_PATH", 
-                os.path.join(os.path.dirname(__file__), "..", "database", "medical.db")
-            )
+        # Lazy import to avoid circular dep if needed, but here it is fine
+        from app.database.core import DatabaseCore
         
-        self.db_path = db_path
+        if db_core:
+            self.db_core = db_core
+        else:
+            self.db_core = DatabaseCore()
         
         # Cache for fuzzy/vector/bm25 search
         self.vectorizer = None
@@ -109,12 +108,9 @@ class DrugMatcher:
     
     def _load_cache(self) -> None:
         """Load drugs vào RAM cho fuzzy/vector/bm25 search."""
-        if not os.path.exists(self.db_path):
-            print(f"[DrugMatcher] WARNING: Database not found at {self.db_path}")
-            return
         
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
+        conn = self.db_core.get_connection()
+        # conn.row_factory = sqlite3.Row # Handled by Core
         cursor = conn.cursor()
         
         try:
@@ -182,12 +178,7 @@ class DrugMatcher:
         logger.info(f"[MATCH] Input: '{raw_query}'")
         logger.info(f"[MATCH] Normalized: '{normalized}'")
         
-        if not os.path.exists(self.db_path):
-            logger.error(f"[MATCH] Database not found: {self.db_path}")
-            return self._not_found("DB_NOT_FOUND")
-        
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
+        conn = self.db_core.get_connection()
         cursor = conn.cursor()
         
         try:

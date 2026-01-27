@@ -10,10 +10,11 @@ class DrugRepository:
 
     async def get_drug_by_id(self, row_id):
         conn = self.db_core.get_connection()
-        conn.row_factory = sqlite3.Row
+        # conn.row_factory = sqlite3.Row # Moved to core or handled by cursor_factory
         cursor = conn.cursor()
         try:
-            cursor.execute("SELECT rowid, * FROM drugs WHERE rowid = ?", (row_id,))
+            # Use 'id' instead of 'rowid' which is standard across SQLite and Postgres
+            cursor.execute("SELECT id, * FROM drugs WHERE id = ?", (row_id,))
             row = cursor.fetchone()
             if row:
                 return dict(row)
@@ -23,25 +24,42 @@ class DrugRepository:
 
     def get_all_drugs(self, page=1, limit=10, search=None):
         conn = self.db_core.get_connection()
-        conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         offset = (page - 1) * limit
         try:
             if search:
                 search_term = f"%{search.strip()}%"
                 cursor.execute("SELECT count(*) FROM drugs WHERE ten_thuoc LIKE ? OR so_dang_ky LIKE ?", (search_term, search_term))
-                total = cursor.fetchone()[0]
+                # Handle different cursor return types (tuple vs dict)
+                res = cursor.fetchone()
+                # If RealDictCursor (Postgres), it returns dict. If tuple (SQLite default), tuple.
+                # However, our core wrapper for SQLite uses dict_factory.
+                # If Postgres RealDictCursor, 'count(*)' might be accessed via key or list?
+                # RealDictCursor returns {'count': 123} usually if named, or just verify access.
+                # Best compatibility: use aliases
+                
+                # Check DB Type to be safe or use alias provided by logic
+                if isinstance(res, dict):
+                    # Postgres RealDictCursor or SQLite dict_factory
+                    # count(*) usually comes as 'count'
+                    total = list(res.values())[0]
+                else:
+                    total = res[0]
                 
                 cursor.execute("""
-                    SELECT rowid, * FROM drugs 
+                    SELECT id, * FROM drugs 
                     WHERE ten_thuoc LIKE ? OR so_dang_ky LIKE ?
                     ORDER BY ten_thuoc LIMIT ? OFFSET ?
                 """, (search_term, search_term, limit, offset))
             else:
                 cursor.execute("SELECT count(*) FROM drugs")
-                total = cursor.fetchone()[0]
+                res = cursor.fetchone()
+                if isinstance(res, dict):
+                    total = list(res.values())[0]
+                else:
+                    total = res[0]
                 
-                cursor.execute("SELECT rowid, * FROM drugs ORDER BY updated_at DESC LIMIT ? OFFSET ?", (limit, offset))
+                cursor.execute("SELECT id, * FROM drugs ORDER BY updated_at DESC LIMIT ? OFFSET ?", (limit, offset))
             
             rows = cursor.fetchall()
             return {"data": [dict(r) for r in rows], "total": total, "page": page, "limit": limit}
@@ -53,12 +71,14 @@ class DrugRepository:
         conn = self.db_core.get_connection()
         cursor = conn.cursor()
         try:
-            # Also delete from FTS if exists
-            cursor.execute("SELECT rowid FROM drugs WHERE so_dang_ky = ?", (sdk,))
-            row = cursor.fetchone()
-            if row:
-                row_id = row[0]
-                cursor.execute("DELETE FROM drugs_fts WHERE rowid = ?", (row_id,))
+            # Also delete from FTS if exists (SQLite Only)
+            if self.db_core.db_type == 'sqlite':
+                cursor.execute("SELECT id FROM drugs WHERE so_dang_ky = ?", (sdk,))
+                row = cursor.fetchone()
+                if row:
+                    # Dict or Tuple check
+                    row_id = row['id'] if isinstance(row, dict) else row[0]
+                    cursor.execute("DELETE FROM drugs_fts WHERE rowid = ?", (row_id,))
             
             cursor.execute("DELETE FROM drugs WHERE so_dang_ky = ?", (sdk,))
             affected = cursor.rowcount
@@ -76,10 +96,12 @@ class DrugRepository:
         conn = self.db_core.get_connection()
         cursor = conn.cursor()
         try:
-            # Delete from FTS
-            cursor.execute("DELETE FROM drugs_fts WHERE rowid = ?", (row_id,))
+            # Delete from FTS (SQLite Only)
+            if self.db_core.db_type == 'sqlite':
+                cursor.execute("DELETE FROM drugs_fts WHERE rowid = ?", (row_id,))
+            
             # Delete from main table
-            cursor.execute("DELETE FROM drugs WHERE rowid = ?", (row_id,))
+            cursor.execute("DELETE FROM drugs WHERE id = ?", (row_id,))
             affected = cursor.rowcount
             conn.commit()
             return affected > 0

@@ -1,5 +1,4 @@
 import math
-import sqlite3
 from typing import List, Dict, Optional, Tuple
 from app.models import ConsultResult 
 from app.database.core import DatabaseCore
@@ -82,12 +81,17 @@ class ConsultationService:
         """
         Strict Lookup by Normalized Drug Name + Disease ICD.
         """
+    def check_knowledge_base_strict(self, drug_name_norm: str, disease_icd: str) -> Optional[Dict]:
+        """
+        Strict Lookup by Normalized Drug Name + Disease ICD.
+        """
         conn = self.db_core.get_connection()
-        conn.row_factory = sqlite3.Row
+        # conn.row_factory = sqlite3.Row # Removed: DatabaseCore handles this (Dict cursor)
         cursor = conn.cursor()
         
         try:
             # Query for exact match on drug_name_norm + disease_icd
+            # ? placeholders are handled by DatabaseCore wrapper if Postgres
             cursor.execute("""
                 SELECT 
                     treatment_type, 

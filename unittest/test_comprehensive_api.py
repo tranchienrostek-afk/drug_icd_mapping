@@ -169,11 +169,20 @@ def mock_openai(mocker):
     mock_client = mocker.MagicMock()
     mock_client.chat.completions.create.return_value = mock_response
     
-    mocker.patch("app.service.ai_consult_service.get_openai_client", return_value=mock_client)
+    mocker.patch("app.service.ai_consult_service._get_client", return_value=mock_client)
     mocker.patch("app.services.get_openai_client", return_value=mock_client)
-    
-    return mock_client
-
+@pytest.fixture
+def mock_crawler(mocker):
+    """Mock the drug web crawler to avoid playwright dependencies."""
+    mock_data = {
+        "ten_thuoc": "Mocked Drug",
+        "hoat_chat": "Mocked Ingredient",
+        "chi_dinh": "Mocked Indication",
+        "source": "mock_crawler"
+    }
+    mocker.patch("app.service.drug_identification_service.scrape_drug_web", return_value=mock_data)
+    mocker.patch("app.service.crawler.main.scrape_drug_web_advanced", return_value=mock_data)
+    return mock_data
 
 # =============================================================================
 # TEST CLASSES
@@ -249,7 +258,7 @@ class TestDrugsAPI:
             assert "status" in data
     
     @pytest.mark.anyio
-    async def test_identify_drugs(self, client):
+    async def test_identify_drugs(self, client, mock_crawler):
         """Test POST /api/v1/drugs/identify - Drug identification."""
         payload = {
             "drugs": ["Paracetamol 500mg", "Unknown Drug XYZ"]
@@ -548,7 +557,7 @@ class TestAnalysisAPI:
     """Test Analysis API endpoints."""
     
     @pytest.mark.anyio
-    async def test_treatment_analysis(self, client):
+    async def test_treatment_analysis(self, client, mock_crawler, mock_openai):
         """Test POST /api/v1/analysis/treatment-analysis - Full analysis."""
         payload = {
             "drugs": ["Paracetamol 500mg", "Candesartan 16mg"],

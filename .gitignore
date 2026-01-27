@@ -22,10 +22,12 @@ wheels/
 *.egg
 venv/
 .env
+.env.production
+.env.*
 
 # SQLite
 *.db
-!medical.db  # Only include the main medical.db if desired, or exclude all .db
+*.db.bak
 
 # Logs
 app/logs/

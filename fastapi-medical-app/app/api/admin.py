@@ -92,3 +92,34 @@ def get_monitor_stats(days: int = 1):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# --- REQUEST LOGS (NEW) ---
+@router.get("/request_logs")
+def get_request_logs(
+    limit: int = 50, 
+    endpoint: str = None,
+    date_filter: str = None  # "today", "week", "month"
+):
+    """
+    Get detailed request logs from monitor.db with filters.
+    Returns summary stats, success/failure rates, and request list.
+    """
+    try:
+        from app.monitor.service import get_monitor_stats, get_recent_logs, get_api_detailed_stats
+        
+        # Get detailed stats for each API
+        mapping_stats = get_api_detailed_stats(endpoint="mapping", date_filter=date_filter)
+        consult_stats = get_api_detailed_stats(endpoint="consult", date_filter=date_filter)
+        
+        # Get filtered logs
+        logs = get_recent_logs(limit=limit, endpoint_filter=endpoint, date_filter=date_filter)
+        
+        return {
+            "status": "success",
+            "mapping_stats": mapping_stats,
+            "consult_stats": consult_stats,
+            "logs": logs
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+

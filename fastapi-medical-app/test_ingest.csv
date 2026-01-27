@@ -1,0 +1,3 @@
+"id","so_hoso_boithuong","chuan_doan_ra_vien","?column?","benh_phu","ten_thuoc","ham_luong","cach_dung","so_luong","don_vi_tinh","ly_do","phan_loai","tdv_feedback"
+"test-uuid-1","BT/TEST1","Viêm họng cấp","J02 - Viêm họng cấp","{}","Paracetamol 500mg",NULL,"Uống 1 viên khi sốt",10,"Viên","Hạ sốt","{drug,valid,""main drug""}","{valid}"
+"test-uuid-2","BT/TEST2","Viêm phế quản","J20 - Viêm phế quản cấp","{}","Amoxicillin 500mg",NULL,"Uống 1 viên sau ăn",15,"Viên","Kháng sinh điều trị nhiễm khuẩn","{drug,valid,""main drug""}","{valid}"

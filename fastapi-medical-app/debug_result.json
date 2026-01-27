@@ -1,0 +1,63 @@
+{
+  "request_id": "string",
+  "status": "processed",
+  "processing_timestamp": "2026-01-26T06:37:57.100106",
+  "summary": {
+    "total_claim_items": 3,
+    "total_medicine_items": 2,
+    "matched_items": 0,
+    "unmatched_claims": 3,
+    "unclaimed_purchases": 2,
+    "need_manual_review": 3,
+    "risk_level": "high"
+  },
+  "results": [],
+  "anomalies": {
+    "claim_without_purchase": [
+      {
+        "id": "1",
+        "service": "MEDOVENT 30 10X10",
+        "amount": 10000.0,
+        "risk_flag": "high",
+        "reason": "Không tìm thấy thuốc tương ứng trong danh sách mua"
+      },
+      {
+        "id": "2",
+        "service": "PANTOLOC 40MG TAKEDA 1X7",
+        "amount": 10000.0,
+        "risk_flag": "high",
+        "reason": "Không tìm thấy thuốc tương ứng trong danh sách mua"
+      },
+      {
+        "id": "3",
+        "service": "Thăm dò chức năng",
+        "amount": 10000.0,
+        "risk_flag": "high",
+        "reason": "Không tìm thấy thuốc tương ứng trong danh sách mua"
+      }
+    ],
+    "purchase_without_claim": [
+      {
+        "id": "1",
+        "service": "Ambroxol hydrochloride (Medovent 30mg)",
+        "amount": 0.0,
+        "risk_flag": "low",
+        "reason": "Thuốc đã mua nhưng không yêu cầu bồi thường"
+      },
+      {
+        "id": "2",
+        "service": "Pantoprazole (dưới dạng Pantoprazole sodium sesquihydrate)(Pantoloc 40mg)",
+        "amount": 0.0,
+        "risk_flag": "low",
+        "reason": "Thuốc đã mua nhưng không yêu cầu bồi thường"
+      }
+    ]
+  },
+  "audit_trail": {
+    "normalization_applied": true,
+    "fuzzy_matching": true,
+    "drug_ontology_used": true,
+    "amount_used_as_supporting_signal": true,
+    "processing_time_ms": 21.66
+  }
+}

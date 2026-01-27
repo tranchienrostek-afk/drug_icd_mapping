@@ -215,6 +215,128 @@
                     </div>
                 </div>
 
+                <!-- REQUEST STATISTICS (COMPREHENSIVE) -->
+                <div class="card mb-4">
+                    <div
+                        class="card-header bg-primary text-white fw-bold d-flex justify-content-between align-items-center">
+                        <span>📡 API Statistics</span>
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-sm btn-light" onclick="setDateFilter('today')">Hôm
+                                nay</button>
+                            <button type="button" class="btn btn-sm btn-light" onclick="setDateFilter('week')">Tuần
+                                này</button>
+                            <button type="button" class="btn btn-sm btn-light" onclick="setDateFilter('month')">Tháng
+                                này</button>
+                            <button type="button" class="btn btn-sm btn-outline-light" onclick="setDateFilter(null)">Tất
+                                cả</button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <!-- Mapping Stats -->
+                        <h5 class="text-success mb-3">🔗 /mapping/match</h5>
+                        <div class="row mb-4">
+                            <div class="col-md-3">
+                                <div class="card text-center border-success h-100">
+                                    <div class="card-body py-2">
+                                        <small class="text-muted">Tổng Request</small>
+                                        <p class="display-6 fw-bold text-success mb-0" id="mapping-total">0</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card text-center h-100">
+                                    <div class="card-body py-2">
+                                        <small class="text-muted">Success Rate</small>
+                                        <p class="display-6 fw-bold mb-0" id="mapping-success-rate">0%</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card text-center h-100">
+                                    <div class="card-body py-2">
+                                        <small class="text-muted">Matched / Total</small>
+                                        <p class="mb-0"><span class="text-success fw-bold fs-4"
+                                                id="mapping-matched">0</span> / <span class="text-danger fs-5"
+                                                id="mapping-unmatched">0</span></p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card text-center h-100">
+                                    <div class="card-body py-2">
+                                        <small class="text-muted">Coverage Rate</small>
+                                        <p class="display-6 fw-bold text-primary mb-0" id="mapping-coverage">0%</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Consult Stats -->
+                        <h5 class="text-info mb-3">💊 /consult_integrated</h5>
+                        <div class="row mb-4">
+                            <div class="col-md-3">
+                                <div class="card text-center border-info h-100">
+                                    <div class="card-body py-2">
+                                        <small class="text-muted">Tổng Request</small>
+                                        <p class="display-6 fw-bold text-info mb-0" id="consult-total">0</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card text-center h-100">
+                                    <div class="card-body py-2">
+                                        <small class="text-muted">Success Rate</small>
+                                        <p class="display-6 fw-bold mb-0" id="consult-success-rate">0%</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card text-center h-100">
+                                    <div class="card-body py-2">
+                                        <small class="text-muted">Có Role / Tổng</small>
+                                        <p class="mb-0"><span class="text-success fw-bold fs-4"
+                                                id="consult-found">0</span> / <span class="text-danger fs-5"
+                                                id="consult-notfound">0</span></p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card text-center h-100">
+                                    <div class="card-body py-2">
+                                        <small class="text-muted">KB Coverage</small>
+                                        <p class="display-6 fw-bold text-primary mb-0" id="consult-coverage">0%</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tabs for logs -->
+                        <ul class="nav nav-tabs" id="logsTab" role="tablist">
+                            <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab"
+                                    data-bs-target="#tab-all" onclick="filterLogs(null)">Tất cả</button></li>
+                            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab"
+                                    data-bs-target="#tab-mapping" onclick="filterLogs('mapping')">Mapping</button></li>
+                            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab"
+                                    data-bs-target="#tab-consult" onclick="filterLogs('consult')">Consult</button></li>
+                        </ul>
+
+                        <table class="table table-sm table-bordered table-hover mt-2">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Request ID</th>
+                                    <th>Endpoint</th>
+                                    <th>Status</th>
+                                    <th>Latency</th>
+                                    <th>Found/NotFound</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-request-logs"></tbody>
+                        </table>
+                    </div>
+                </div>
+
                 <!-- Ingestion History -->
                 <div class="card">
                     <div class="card-header bg-light fw-bold">📥 Lịch Sử Import (CSV Batches)</div>
@@ -493,6 +615,103 @@
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
                     <button type="button" class="btn btn-danger" onclick="confirmReject()">Từ Chối</button>
                     <button type="button" class="btn btn-success" onclick="confirmApprove()">✅ Phê Duyệt</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- REQUEST DETAIL MODAL (COMPREHENSIVE) -->
+    <div class="modal fade" id="requestDetailModal" tabindex="-1">
+        <div class="modal-dialog modal-fullscreen-lg-down modal-xl">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="requestDetailTitle">📋 Chi Tiết Request</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" style="max-height: 80vh; overflow-y: auto;">
+                    <!-- Header Info -->
+                    <div class="row mb-3 bg-light p-3 rounded">
+                        <div class="col-md-3">
+                            <small class="text-muted">Request ID</small>
+                            <div class="fw-bold fs-5" id="detail-request-id">-</div>
+                        </div>
+                        <div class="col-md-3">
+                            <small class="text-muted">Endpoint</small>
+                            <div id="detail-endpoint">-</div>
+                        </div>
+                        <div class="col-md-3">
+                            <small class="text-muted">Status</small>
+                            <div id="detail-status">-</div>
+                        </div>
+                        <div class="col-md-3">
+                            <small class="text-muted">Latency</small>
+                            <div id="detail-latency">-</div>
+                        </div>
+                    </div>
+
+                    <!-- Summary Bar -->
+                    <div class="alert alert-info d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>📊 Kết quả:</strong>
+                            <span class="text-success fw-bold" id="detail-found-count">0</span> matched /
+                            <span class="text-danger fw-bold" id="detail-unmatched-count">0</span> unmatched
+                        </div>
+                        <div>
+                            <span class="badge bg-primary fs-6" id="detail-total-count">0 items</span>
+                        </div>
+                    </div>
+
+                    <!-- MATCHED TABLE -->
+                    <div class="card mb-3 border-success">
+                        <div class="card-header bg-success text-white fw-bold">
+                            ✅ Matched / Found (<span id="matched-table-count">0</span>)
+                        </div>
+                        <div class="card-body p-0">
+                            <table class="table table-sm table-hover mb-0" id="matched-table">
+                                <thead class="table-light">
+                                    <tr id="matched-table-header"></tr>
+                                </thead>
+                                <tbody id="matched-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- UNMATCHED TABLE -->
+                    <div class="card mb-3 border-danger">
+                        <div class="card-header bg-danger text-white fw-bold">
+                            ❌ Unmatched / Not Found (<span id="unmatched-table-count">0</span>)
+                        </div>
+                        <div class="card-body p-0">
+                            <table class="table table-sm table-hover mb-0" id="unmatched-table">
+                                <thead class="table-light">
+                                    <tr id="unmatched-table-header"></tr>
+                                </thead>
+                                <tbody id="unmatched-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- ANOMALIES TABLE (if any) -->
+                    <div class="card border-warning" id="anomalies-section" style="display:none;">
+                        <div class="card-header bg-warning text-dark fw-bold">
+                            ⚠️ Anomalies (<span id="anomalies-table-count">0</span>)
+                        </div>
+                        <div class="card-body p-0">
+                            <table class="table table-sm table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Service</th>
+                                        <th>Lý do</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="anomalies-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
                 </div>
             </div>
         </div>
@@ -816,11 +1035,220 @@
                 `;
             });
             tableBody.innerHTML = html;
+
+            // Also load request logs when system stats are loaded
+            loadRequestLogs();
         }
 
-        // ... [Pagination logic unchanged] ... 
+        // --- REQUEST LOGS (COMPREHENSIVE) ---
+        let requestDetailModal;
+        let allRequestLogs = [];
+        let currentDateFilter = null;
+        let currentEndpointFilter = null;
 
-        // [Existing functions...]
+        function setDateFilter(filter) {
+            currentDateFilter = filter;
+            loadRequestLogs();
+        }
+
+        function filterLogs(endpoint) {
+            currentEndpointFilter = endpoint;
+            renderRequestLogs(allRequestLogs.filter(log => {
+                if (!endpoint) return true;
+                return log.endpoint.includes(endpoint);
+            }));
+        }
+
+        async function loadRequestLogs() {
+            try {
+                let url = '/api/v1/admin/request_logs?limit=100';
+                if (currentDateFilter) url += `&date_filter=${currentDateFilter}`;
+                if (currentEndpointFilter) url += `&endpoint=${currentEndpointFilter}`;
+
+                const response = await fetch(url);
+                const data = await response.json();
+
+                // Update MAPPING stats
+                const m = data.mapping_stats || {};
+                document.getElementById('mapping-total').innerText = m.total_requests || 0;
+                document.getElementById('mapping-success-rate').innerText = (m.success_rate || 0) + '%';
+                document.getElementById('mapping-matched').innerText = m.total_matched || 0;
+                document.getElementById('mapping-unmatched').innerText = m.total_unmatched || 0;
+                document.getElementById('mapping-coverage').innerText = (m.coverage_rate || 0) + '%';
+
+                // Update CONSULT stats
+                const c = data.consult_stats || {};
+                document.getElementById('consult-total').innerText = c.total_requests || 0;
+                document.getElementById('consult-success-rate').innerText = (c.success_rate || 0) + '%';
+                document.getElementById('consult-found').innerText = c.total_matched || 0;
+                document.getElementById('consult-notfound').innerText = c.total_unmatched || 0;
+                document.getElementById('consult-coverage').innerText = (c.coverage_rate || 0) + '%';
+
+                // Store logs and render table
+                allRequestLogs = data.logs || [];
+                renderRequestLogs(allRequestLogs);
+                renderRequestLogs(allRequestLogs);
+            } catch (err) {
+                console.error('Failed to load request logs:', err);
+            }
+        }
+
+        function renderRequestLogs(logs) {
+            const tableBody = document.getElementById('table-request-logs');
+            if (!logs || logs.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Chưa có request nào</td></tr>';
+                return;
+            }
+
+            let html = '';
+            logs.forEach((log, index) => {
+                const statusBadge = log.status_code < 400
+                    ? '<span class="badge bg-success">200 OK</span>'
+                    : `<span class="badge bg-danger">${log.status_code}</span>`;
+                const endpoint = log.endpoint.includes('consult') ? 'consult' : 'mapping';
+                const endpointBadge = endpoint === 'consult'
+                    ? '<span class="badge bg-info">Consult</span>'
+                    : '<span class="badge bg-success">Mapping</span>';
+
+                html += `
+                    <tr>
+                        <td><small>${log.timestamp || '-'}</small></td>
+                        <td><code>${log.request_id || 'N/A'}</code></td>
+                        <td>${endpointBadge}</td>
+                        <td>${statusBadge}</td>
+                        <td>${log.latency_ms ? log.latency_ms.toFixed(0) + 'ms' : '-'}</td>
+                        <td>
+                            <span class="text-success fw-bold">${log.matched_count || 0}</span> / 
+                            <span class="text-danger">${log.unmatched_count || 0}</span>
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" onclick="openRequestDetail(${index})">Chi tiết</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            tableBody.innerHTML = html;
+        }
+
+        function openRequestDetail(index) {
+            const log = allRequestLogs[index];
+            if (!log) return;
+
+            // 1. Reset Modal State
+            document.getElementById('detail-request-id').innerText = log.request_id || 'N/A';
+            document.getElementById('detail-endpoint').innerHTML = `<span class="badge bg-secondary">${log.endpoint}</span>`;
+            document.getElementById('detail-status').innerHTML = log.status_code < 400
+                ? '<span class="badge bg-success fs-6">200 OK</span>'
+                : `<span class="badge bg-danger fs-6">${log.status_code}</span>`;
+            document.getElementById('detail-latency').innerHTML = `<span class="badge bg-dark fs-6">${log.latency_ms?.toFixed(0) || 0} ms</span>`;
+
+            const matchedHeader = document.getElementById('matched-table-header');
+            const unmatchedHeader = document.getElementById('unmatched-table-header');
+            const matchedBody = document.getElementById('matched-table-body');
+            const unmatchedBody = document.getElementById('unmatched-table-body');
+            const anomaliesBody = document.getElementById('anomalies-table-body');
+            const anomaliesSection = document.getElementById('anomalies-section');
+
+            matchedBody.innerHTML = '';
+            unmatchedBody.innerHTML = '';
+            anomaliesBody.innerHTML = '';
+            anomaliesSection.style.display = 'none';
+
+            // Parse response body
+            let respData = {};
+            try {
+                respData = JSON.parse(log.response_body);
+            } catch { respData = { error: "Không thể parse JSON (có thể bị cắt cụt do quá dài)" }; }
+
+            let matchedCount = 0;
+            let unmatchedCount = 0;
+
+            // 2. Render by Endpoint
+            if (log.endpoint.includes('mapping')) {
+                // Headers
+                matchedHeader.innerHTML = '<th>Claim Service</th><th>Medicine Service</th><th>Confidence</th><th>Status</th>';
+                unmatchedHeader.innerHTML = '<th>Claim Service</th><th>Reason</th>';
+
+                const results = respData.results || [];
+                results.forEach(r => {
+                    matchedCount++;
+                    matchedBody.innerHTML += `
+                        <tr>
+                            <td class="text-primary fw-bold">${r.claim_service || '-'}</td>
+                            <td class="text-success">${r.medicine_service || '-'}</td>
+                            <td><span class="badge bg-info">${(r.confidence_score * 100).toFixed(1)}%</span></td>
+                            <td><span class="badge bg-light text-dark border">${r.match_status || '-'}</span></td>
+                        </tr>
+                    `;
+                });
+
+                const anomalies = respData.anomalies?.claim_without_purchase || [];
+                anomalies.forEach(a => {
+                    unmatchedCount++;
+                    unmatchedBody.innerHTML += `
+                        <tr class="table-warning">
+                            <td class="fw-bold">${a.service || '-'}</td>
+                            <td class="text-danger small">${a.reason || 'Không tìm thấy'}</td>
+                        </tr>
+                    `;
+                });
+            } else if (log.endpoint.includes('consult')) {
+                // Headers
+                const sharedHeader = '<th>Tên thuốc</th><th>SDK</th><th>Category</th><th>Validity</th><th>Role</th><th>Feedback</th>';
+                matchedHeader.innerHTML = sharedHeader;
+                unmatchedHeader.innerHTML = sharedHeader;
+
+                const results = respData.results || [];
+                results.forEach(r => {
+                    const isFound = r.role || r.validity === 'valid';
+                    const targetBody = isFound ? matchedBody : unmatchedBody;
+                    if (isFound) matchedCount++; else unmatchedCount++;
+
+                    targetBody.innerHTML += `
+                        <tr class="${isFound ? '' : 'table-danger'}">
+                            <td class="fw-bold">${r.name || '-'}</td>
+                            <td><code>${r.id || '-'}</code></td>
+                            <td><span class="badge bg-light text-dark border">${r.category || '-'}</span></td>
+                            <td><span class="badge ${r.validity === 'valid' ? 'bg-success' : 'bg-warning'}">${r.validity || '-'}</span></td>
+                            <td class="text-primary fw-bold">${r.role || '-'}</td>
+                            <td class="small text-muted">${r.explanation || '-'}</td>
+                        </tr>
+                    `;
+                });
+            }
+
+            // 3. Set Final Counts
+            document.getElementById('matched-table-count').innerText = matchedCount;
+            document.getElementById('unmatched-table-count').innerText = unmatchedCount;
+            document.getElementById('detail-found-count').innerText = matchedCount;
+            document.getElementById('detail-unmatched-count').innerText = unmatchedCount;
+            document.getElementById('detail-total-count').innerText = `${matchedCount + unmatchedCount} items`;
+
+            // Show modal
+            if (!requestDetailModal) {
+                requestDetailModal = new bootstrap.Modal(document.getElementById('requestDetailModal'));
+            }
+            requestDetailModal.show();
+        }
+
+        function renderPagination(type, total, paginationEl) {
+            if (!paginationEl) return;
+            const pageCount = Math.ceil(total / PAGE_LIMIT);
+            paginationEl.innerHTML = "";
+            if (pageCount <= 1) return;
+
+            for (let i = 1; i <= pageCount; i++) {
+                const li = document.createElement("li");
+                li.className = `page-item ${i === currentPage[type] ? 'active' : ''}`;
+                li.innerHTML = `<a class="page-link" href="#" onclick="changePage('${type}', ${i})">${i}</a>`;
+                paginationEl.appendChild(li);
+            }
+        }
+
+        function changePage(type, page) {
+            currentPage[type] = page;
+            loadData(type);
+        }
 
         // --- STAGING LOGIC ---
 

@@ -1,0 +1,67 @@
+{
+    "request_id": "string",
+    "status": "processed",
+    "processing_timestamp": "2026-01-26T07:34:12.523567",
+    "summary": {
+        "total_claim_items": 3,
+        "total_medicine_items": 2,
+        "matched_items": 2,
+        "unmatched_claims": 1,
+        "unclaimed_purchases": 0,
+        "need_manual_review": 3,
+        "risk_level": "high"
+    },
+    "results": [
+        {
+            "claim_id": "1",
+            "medicine_id": "1",
+            "claim_service": "MEDOVENT 30 10X10",
+            "medicine_service": "Ambroxol hydrochloride (Medovent 30mg)",
+            "match_status": "matched",
+            "confidence_score": 1.0,
+            "decision": "manual_review",
+            "evidence": {
+                "text_similarity": 0.0,
+                "amount_similarity": 0.0,
+                "drug_knowledge_match": true,
+                "method": "DIRECT_AI (gpt-4o-mini)",
+                "notes": "Claim 'MEDOVENT 30 10X10' khớp hoàn toàn với 'Medovent 30mg' do cùng hoạt chất và tên thương mại."
+            }
+        },
+        {
+            "claim_id": "2",
+            "medicine_id": "2",
+            "claim_service": "PANTOLOC 40MG TAKEDA 1X7",
+            "medicine_service": "Pantoprazole (dưới dạng Pantoprazole sodium sesquihydrate)(Pantoloc 40mg)",
+            "match_status": "matched",
+            "confidence_score": 1.0,
+            "decision": "manual_review",
+            "evidence": {
+                "text_similarity": 0.0,
+                "amount_similarity": 0.0,
+                "drug_knowledge_match": true,
+                "method": "DIRECT_AI (gpt-4o-mini)",
+                "notes": "Claim 'PANTOLOC 40MG TAKEDA 1X7' khớp hoàn toàn với 'Pantoloc 40mg' do cùng hoạt chất và tên thương mại."
+            }
+        }
+    ],
+    "anomalies": {
+        "claim_without_purchase": [
+            {
+                "id": "3",
+                "service": "Thăm dò chức năng",
+                "amount": 10000.0,
+                "risk_flag": "high",
+                "reason": "Không tìm thấy thuốc tương ứng trong danh sách mua"
+            }
+        ],
+        "purchase_without_claim": []
+    },
+    "audit_trail": {
+        "normalization_applied": false,
+        "fuzzy_matching": false,
+        "drug_ontology_used": false,
+        "amount_used_as_supporting_signal": false,
+        "processing_time_ms": 5124.34
+    }
+}

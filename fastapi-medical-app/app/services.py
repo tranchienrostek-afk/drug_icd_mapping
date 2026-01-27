@@ -1,4 +1,3 @@
-import sqlite3
 import os
 import asyncio
 from datetime import datetime
@@ -191,7 +190,8 @@ class DrugDbEngine:
             drug_name = data.get('drug_name', '')
             disease_name = data.get('disease_name', '')
             sdk = data.get('sdk', '')
-            icd_code = data.get('icd_code', '')
+            # Normalize ICD to match ConsultationService logic (lowercase)
+            icd_code = data.get('icd_code', '').strip().lower()
             treatment_note = data.get('treatment_note', '')
             is_verified = data.get('is_verified', 0)
             coverage_type = data.get('coverage_type', '')
@@ -228,9 +228,34 @@ class DrugDbEngine:
                 """, (sdk, icd_code, treatment_note, is_verified, coverage_type, created_by, status))
                 
                 new_id = cursor.lastrowid
+                
+                # --- SYNC TO KNOWLEDGE_BASE ---
+                # Check if entry exists in KB to avoid duplicates or update it
+                drug_norm = normalize_text(drug_name)
+                # disease_norm = normalize_text(disease_name) # Schema has disease_name_norm but lookup uses icd
+                
+                cursor.execute("""
+                    SELECT id FROM knowledge_base 
+                    WHERE drug_name_norm = ? AND disease_icd = ?
+                """, (drug_norm, icd_code))
+                kb_row = cursor.fetchone()
+                
+                if kb_row:
+                    cursor.execute("""
+                        UPDATE knowledge_base
+                        SET treatment_type = ?, tdv_feedback = ?, frequency = frequency + 1, last_updated = CURRENT_TIMESTAMP
+                        WHERE id = ?
+                    """, (coverage_type, treatment_note, kb_row['id']))
+                else:
+                    cursor.execute("""
+                        INSERT INTO knowledge_base
+                        (drug_name, drug_name_norm, disease_icd, disease_name, treatment_type, tdv_feedback, frequency, last_updated)
+                        VALUES (?, ?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP)
+                    """, (drug_name, drug_norm, icd_code, disease_name, coverage_type, treatment_note))
+                
                 conn.commit()
                 conn.close()
-                return {"status": "created", "message": f"Link created: {sdk} <-> {icd_code}", "id": new_id}
+                return {"status": "created", "message": f"Link and KB Sync created: {sdk} <-> {icd_code}", "id": new_id}
                 
         except Exception as e:
             return {"status": "error", "message": str(e)}

@@ -8,15 +8,14 @@ from datetime import datetime
 # ==========================================
 # Setup Environment & Path
 # ==========================================
-# ==========================================
-# Setup Environment & Path
-# ==========================================
 # Determine path to project root
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
 
 # Check if we are in a structure where 'fastapi-medical-app' is a sibling or if we are IN it
 possible_roots = [
+    "/app", # Docker root
+    os.getcwd(),
     os.path.join(parent_dir, 'fastapi-medical-app'), # Local host structure
     parent_dir, # Container /app structure (unittest is in /app/unittest)
 ]
@@ -28,12 +27,13 @@ for root in possible_roots:
         break
 
 if found_root:
-    sys.path.append(found_root)
+    if found_root not in sys.path:
+        sys.path.append(found_root)
     print(f"DEBUG: Added {found_root} to sys.path")
 else:
     print(f"WARNING: Could not find 'app' package in standard locations. PWD: {os.getcwd()}")
     # Fallback to current directory or parent
-    sys.path.append(parent_dir)
+    sys.path.append(os.getcwd())
 
 try:
     from app.mapping_drugs.service import ClaimsMedicineMatchingService
@@ -68,14 +68,6 @@ class TestClaimsMedicineMatching(unittest.IsolatedAsyncioTestCase):
         # Mock AI match to return no matches by default
         self.mock_ai_instance.match_claims_medicine = MagicMock(return_value={"matches": [], "ai_model": "MOCK_AI"})
         # Make async mock return value work
-        async def async_return():
-            return {"matches": [], "ai_model": "MOCK_AI"}
-        self.mock_ai_instance.match_claims_medicine.return_value = {"matches": [], "ai_model": "MOCK_AI"}
-        self.mock_ai_instance.match_claims_medicine.side_effect = None
-        # Since we use await, the return value must be awaitable if not using AsyncMock (which implies 3.8+)
-        # But IsolatedAsyncioTestCase handles async.
-        # Ideally use AsyncMock if available.
-        # Simplest is to just set side_effect to an async function
         async def mock_ai_match(*args, **kwargs):
              return {"matches": [], "ai_model": "MOCK_AI"}
         self.mock_ai_instance.match_claims_medicine.side_effect = mock_ai_match

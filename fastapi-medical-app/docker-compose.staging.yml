@@ -1,0 +1,22 @@
+version: '3.8'
+
+# ========================================
+# Docker Compose cho STAGING Environment
+# Port: 8001 (khác Prod 8000)
+# ========================================
+
+services:
+  staging-web:
+    build: .
+    container_name: drug_icd_staging_web
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./data:/app/data
+    env_file:
+      - .env
+    environment:
+      - APP_ENV=staging
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped

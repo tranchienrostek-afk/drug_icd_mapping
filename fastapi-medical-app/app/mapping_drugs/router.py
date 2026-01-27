@@ -8,6 +8,7 @@ Endpoints:
 
 from fastapi import APIRouter, HTTPException
 from typing import List
+from datetime import datetime
 
 from .service import ClaimsMedicineMatchingService
 from .matcher import DrugMatcher
@@ -68,9 +69,51 @@ async def match_claims_medicine(request: MatchingRequest):
     try:
         service = get_matching_service()
         result = await service.process(request)
-        return result
+        
+        # Manual validation to catch Pydantic errors HERE
+        validated_result = MatchingResponse.model_validate(result)
+        return validated_result
     except Exception as e:
+        import traceback
+        error_detail = traceback.format_exc()
+        with open("c:\\app\\logs\\mapping\\router_errors.log", "a", encoding="utf-8") as f:
+            f.write(f"\n[{datetime.now()}] [ROUTER ERROR] /match failed: {e}\n{error_detail}\n")
         raise HTTPException(status_code=500, detail=f"Matching error: {str(e)}")
+
+
+@router.post("/match_v2", response_model=MatchingResponse)
+async def match_claims_medicine_v2(request: MatchingRequest):
+    """
+    So khớp danh sách Claims với danh sách Medicine - VERSION 2 (DIRECT AI).
+    
+    **Đặc điểm:**
+    - Gửi trực tiếp dữ liệu thô vào AI.
+    - Không qua chuẩn hóa, không qua database lookup.
+    - AI tự phân tích ngữ nghĩa, hoạt chất và ghép nhóm.
+    
+    **Input:**
+    - `claims`: Danh sách thuốc yêu cầu bồi thường (thô)
+    - `medicine`: Danh sách thuốc đã mua thực tế (thô)
+    """
+    if not request.claims:
+        raise HTTPException(status_code=400, detail="Claims list cannot be empty")
+    
+    if not request.medicine:
+        raise HTTPException(status_code=400, detail="Medicine list cannot be empty")
+    
+    try:
+        service = get_matching_service()
+        result = await service.process_v2(request)
+        
+        # Manual validation to catch Pydantic errors HERE
+        validated_result = MatchingResponse.model_validate(result)
+        return validated_result
+    except Exception as e:
+        import traceback
+        error_detail = traceback.format_exc()
+        with open("c:\\app\\logs\\mapping\\router_errors.log", "a", encoding="utf-8") as f:
+            f.write(f"\n[{datetime.now()}] [ROUTER ERROR] /match_v2 failed: {e}\n{error_detail}\n")
+        raise HTTPException(status_code=500, detail=f"Matching V2 error: {str(e)}")
 
 
 @router.post("/test", response_model=DrugMatchResponse)
