@@ -77,7 +77,9 @@ Output JSON: {"role": "tên_role"} hoặc {"role": ""} nếu không xác định
         
         content = response.choices[0].message.content
         result = json.loads(content)
-        return result.get("role", "").strip()
+        role = result.get("role", "").strip()
+        # Final cleanup just in case AI returned something dirty
+        return role.replace('{', '').replace('}', '').replace('"', '').replace("'", "").strip()
         
     except Exception as e:
         print(f"AI Role Inference Error: {e}")
@@ -95,13 +97,15 @@ def _fallback_extract_role(raw_value: str) -> str:
         if isinstance(parsed, list):
             non_role = {'drug', 'nodrug', 'valid', 'invalid', ''}
             for item in reversed(parsed):
-                if isinstance(item, str) and item.lower().strip() not in non_role:
-                    return item.strip()
+                if isinstance(item, str):
+                    clean_item = item.replace('{', '').replace('}', '').strip().lower()
+                    if clean_item and clean_item not in non_role:
+                        return item.replace('{', '').replace('}', '').strip()
     except:
         pass
     
     # Simple string cleanup
-    s = raw_value.replace('[', '').replace(']', '').replace('"', '').replace("'", '')
+    s = raw_value.replace('[', '').replace(']', '').replace('"', '').replace("'", '').replace('{', '').replace('}', '')
     parts = [p.strip() for p in s.split(',')]
     non_role = {'drug', 'nodrug', 'valid', 'invalid', ''}
     for part in reversed(parts):

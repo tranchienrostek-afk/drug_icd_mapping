@@ -60,6 +60,15 @@ class TestGetValidRole:
         """Plain role strings should pass through."""
         assert service._clean_role_string("main drug") == "main drug"
         assert service._clean_role_string("supplement") == "supplement"
+        
+    def test_handles_curly_braces_artifacts(self, service):
+        """Should clean curly braces from DB artifacts like '{drug'."""
+        # Bug reproduction: "{drug" -> "drug" (which is then invalid role) -> valid role extraction?
+        # Waitt, "drug" is NOT a role. So it should return empty string if strict?
+        # Or if input is "{main drug}", it should return "main drug".
+        assert service._clean_role_string('"{main drug}"') == "main drug"
+        assert service._clean_role_string('{secondary drug}') == "secondary drug"
+        assert service._clean_role_string('["{main drug}"]') == "main drug"
 
 
 class TestTDVFallbackLogic:
