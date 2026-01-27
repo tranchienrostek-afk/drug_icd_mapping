@@ -12,6 +12,7 @@ langchain-community
 scikit-learn
 rapidfuzz
 aiofiles
+googlesearch-python
 # Database
 psycopg2-binary
 python-dotenv
