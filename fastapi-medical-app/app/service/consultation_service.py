@@ -152,18 +152,57 @@ class ConsultationService:
 
     def _clean_role_string(self, raw: str) -> str:
         """
-        Helper to clean JSON-like or dirty strings from DB.
-        Ex: '["{valid}"]' -> 'valid'
-            '["{secondary drug}"]' -> 'secondary drug'
+        Parse role from DB value which can be:
+        1. JSON array: '["drug", "valid", "main drug"]' → 'main drug'
+        2. Plain string: 'main drug' → 'main drug'
+        3. Dirty string: '["{valid}"]' → 'valid'
+        
+        For JSON arrays, the structure is [category, validity?, role?]:
+        - ["drug", "valid", "main drug"] → role = "main drug"
+        - ["drug", "invalid"] → role = "" (invalid, no role)
+        - ["nodrug", "supplement"] → role = "supplement"
         """
-        if not raw: return ""
+        import json
+        
+        if not raw:
+            return ""
+        
         s = raw.strip()
         
-        # Remove JSON list brackets
-        s = s.replace('[', '').replace(']', '')
+        # Try to parse as JSON array first
+        if s.startswith('['):
+            try:
+                parsed = json.loads(s)
+                if isinstance(parsed, list) and len(parsed) > 0:
+                    # Structure: [category, validity?, role?]
+                    # Last meaningful element is the role
+                    # Skip 'drug', 'nodrug', 'valid', 'invalid' as they are not roles
+                    non_role_values = {'drug', 'nodrug', 'valid', 'invalid'}
+                    
+                    # Find actual role (last element that's not a category/validity)
+                    for item in reversed(parsed):
+                        if isinstance(item, str):
+                            clean_item = item.lower().strip()
+                            if clean_item and clean_item not in non_role_values:
+                                return item.strip()
+                    
+                    # No role found in array
+                    return ""
+            except (json.JSONDecodeError, TypeError):
+                pass  # Fall through to manual cleaning
         
-        # Remove quotes and curly braces
+        # Manual cleaning for dirty strings like '["{valid}"]'
+        s = s.replace('[', '').replace(']', '')
         s = s.replace('"', '').replace("'", '').replace('{', '').replace('}', '')
+        
+        # If result contains commas, it's a concatenated mess - try to extract last part
+        if ',' in s:
+            parts = [p.strip() for p in s.split(',') if p.strip()]
+            non_role_values = {'drug', 'nodrug', 'valid', 'invalid', ''}
+            for part in reversed(parts):
+                if part.lower() not in non_role_values:
+                    return part
+            return ""
         
         return s.strip()
 

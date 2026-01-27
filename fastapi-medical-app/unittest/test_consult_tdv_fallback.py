@@ -43,9 +43,23 @@ class TestGetValidRole:
         assert service._get_valid_role("unknown") is None
     
     def test_cleans_json_artifacts(self, service):
-        """Should clean JSON brackets and quotes."""
-        assert service._get_valid_role('["{main drug}"]') == "main drug"
-        assert service._get_valid_role('["secondary drug"]') == "secondary drug"
+        """Should parse JSON arrays and extract actual role."""
+        # JSON array format: [category, validity, role]
+        assert service._clean_role_string('["drug", "valid", "main drug"]') == "main drug"
+        assert service._clean_role_string('["drug", "valid", "secondary drug"]') == "secondary drug"
+        assert service._clean_role_string('["nodrug", "supplement"]') == "supplement"
+        assert service._clean_role_string('["drug", "invalid"]') == ""  # No role, just invalid
+        
+    def test_handles_dirty_concatenated_strings(self, service):
+        """Should handle badly formatted strings with commas."""
+        # This was causing the bug: 'drug, drug, valid, main drug, main drug'
+        assert service._clean_role_string("drug, valid, main drug") == "main drug"
+        assert service._clean_role_string("drug, drug, valid, secondary drug") == "secondary drug"
+        
+    def test_handles_plain_strings(self, service):
+        """Plain role strings should pass through."""
+        assert service._clean_role_string("main drug") == "main drug"
+        assert service._clean_role_string("supplement") == "supplement"
 
 
 class TestTDVFallbackLogic:
