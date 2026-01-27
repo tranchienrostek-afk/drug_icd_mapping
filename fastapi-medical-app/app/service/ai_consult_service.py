@@ -23,6 +23,92 @@ def _get_client():
             print(f"Warning: Could not init OpenAI client: {e}")
     return _client
 
+
+def infer_role_from_data(raw_value: str) -> str:
+    """
+    Use AI to infer the correct role from raw DB value.
+    
+    Examples:
+    - '["drug", "valid", "main drug"]' → 'main drug'
+    - '["drug", "invalid"]' → ''
+    - '["valid", "secondary drug", "main drug", "valid"]' → AI decides
+    - 'drug, valid, main drug' → 'main drug'
+    
+    Returns the inferred role string, or empty string if invalid/unknown.
+    """
+    if not raw_value or not raw_value.strip():
+        return ""
+    
+    client = _get_client()
+    if client is None:
+        # Fallback to simple extraction if AI not available
+        return _fallback_extract_role(raw_value)
+    
+    system_prompt = """Bạn là AI chuyên phân loại thuốc. Nhiệm vụ: Từ dữ liệu thô, xác định ROLE (vai trò) của thuốc.
+
+ROLE hợp lệ:
+- "main drug" (thuốc điều trị chính)
+- "secondary drug" (thuốc hỗ trợ)
+- "supplement" (thực phẩm chức năng)
+- "medical equipment" (thiết bị y tế)
+- "cosmeceuticals" (dược mỹ phẩm)
+
+KHÔNG PHẢI role:
+- "drug", "nodrug" → đây là category, không phải role
+- "valid", "invalid" → đây là validity, không phải role
+
+Output JSON: {"role": "tên_role"} hoặc {"role": ""} nếu không xác định được.
+
+⚠️ CHỈ suy luận từ dữ liệu được cung cấp. KHÔNG tự thêm thông tin."""
+
+    user_prompt = f"Dữ liệu thô: {raw_value}\n\nXác định role."
+
+    try:
+        response = client.chat.completions.create(
+            model=DEPLOYMENT_NAME,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            response_format={"type": "json_object"},
+            temperature=0,
+            max_tokens=50
+        )
+        
+        content = response.choices[0].message.content
+        result = json.loads(content)
+        return result.get("role", "").strip()
+        
+    except Exception as e:
+        print(f"AI Role Inference Error: {e}")
+        return _fallback_extract_role(raw_value)
+
+
+def _fallback_extract_role(raw_value: str) -> str:
+    """Simple fallback when AI is not available."""
+    if not raw_value:
+        return ""
+    
+    # Try JSON parse
+    try:
+        parsed = json.loads(raw_value)
+        if isinstance(parsed, list):
+            non_role = {'drug', 'nodrug', 'valid', 'invalid', ''}
+            for item in reversed(parsed):
+                if isinstance(item, str) and item.lower().strip() not in non_role:
+                    return item.strip()
+    except:
+        pass
+    
+    # Simple string cleanup
+    s = raw_value.replace('[', '').replace(']', '').replace('"', '').replace("'", '')
+    parts = [p.strip() for p in s.split(',')]
+    non_role = {'drug', 'nodrug', 'valid', 'invalid', ''}
+    for part in reversed(parts):
+        if part.lower() not in non_role:
+            return part
+    return ""
+
 def analyze_treatment_group(drugs_str: str, diseases_str: str, verified_links) -> dict:
     """
     Analyzes the suitability of drugs for specific diseases using LLM.
