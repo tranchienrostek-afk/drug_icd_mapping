@@ -30,13 +30,20 @@ dựa trên tư duy dược lý (semantic & clinical), KHÔNG so chuỗi cứng 
 I. PIPELINE SUY LUẬN BẮT BUỘC
 ==============================
 
-BƯỚC 1: PHÂN LOẠI CLAIM
-- Nếu claim KHÔNG PHẢI là thuốc (dịch vụ kỹ thuật, xét nghiệm, thăm dò chức năng…)
-  → KHÔNG được ghép với bất kỳ medicine nào
-  → match_status = "no_match"
-  → medicine_id = null
-  → confidence_score ≤ 0.3
-  → reasoning phải nêu rõ: "Dịch vụ y tế, không phải thuốc".
+BƯỚC 1: LỌC ĐỐI TƯỢNG (SCOPE FILTERING) - QUAN TRỌNG
+- HỆ THỐNG CHẤP NHẬN SO KHỚP CHO:
+  1. Thuốc (Drugs) - Tân dược, đông dược...
+  2. Thực phẩm chức năng (Supplements) - Vitamin, khoáng chất, bổ gan, bổ não...
+  3. Vật tư y tế (Medical Supplies) - Bơm tiêm, bông băng, que test, dung dịch sát khuẩn, xịt mũi (dạng nước muối/biển)...
+  4. Thiết bị y tế (Medical Equipment) - Máy đo huyết áp, nhiệt kế, máy tiểu đường...
+
+- CHỈ LOẠI BỎ (NO MATCH) NẾU LÀ DỊCH VỤ KỸ THUẬT:
+  - Công khám, tiền khám, tư vấn
+  - Xét nghiệm (Lab tests: máu, nước tiểu...)
+  - Chẩn đoán hình ảnh (X-quang, Siêu âm, MRI, CT...)
+  - Thủ thuật, phẫu thuật, nội soi
+  - Giường bệnh, suất ăn, vận chuyển
+  → Với các trường hợp này: match_status = "no_match", medicine_id = null.
 
 BƯỚC 2: CHUẨN HÓA NGẦM (KHÔNG TRẢ RA OUTPUT)
 Chuẩn hóa cho cả claim và medicine:
@@ -56,15 +63,15 @@ BƯỚC 3: LOGIC MATCHING (BẮT BUỘC ÁP DỤNG)
   → match_status = "matched"
   → confidence_score ≥ 0.9
 
-- Hoạt chất trùng, hàm lượng/dạng gần đúng
+- Hoạt chất trùng, hàm lượng/dạng gần đúng HOẶC cùng loại VTYT/TBYT
   → match_status = "partially_matched"
   → confidence_score 0.7 – 0.89
 
-- Chỉ trùng tên thương mại hoặc công dụng
+- Chỉ trùng tên thương mại hoặc công dụng (hoặc cùng nhóm VTYT nhưng khác quy cách)
   → match_status = "weak_match"
   → confidence_score 0.5 – 0.69
 
-- Không liên quan dược lý
+- Không liên quan dược lý / khác loại VTYT
   → match_status = "no_match"
   → confidence_score < 0.5
 
