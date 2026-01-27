@@ -47,8 +47,8 @@ jobs:
           git reset --hard origin/main
           
           echo "2. Rebuilding Staging Container..."
-          docker-compose -f docker-compose.staging.yml rm -f -s web || true
-          docker-compose -f docker-compose.staging.yml up -d --build web
+          docker-compose -f docker-compose.staging.yml rm -f -s staging-web || true
+          docker-compose -f docker-compose.staging.yml up -d --build staging-web
           
           echo "3. Waiting for container startup..."
           sleep 15
