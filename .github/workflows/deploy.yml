@@ -46,7 +46,10 @@ jobs:
           git fetch origin main
           git reset --hard origin/main
           
+          
           echo "2. Rebuilding Staging Container..."
+          # Cleanup conflict container by name
+          docker rm -f drug_icd_staging_web || true
           docker-compose -f docker-compose.staging.yml rm -f -s staging-web || true
           docker-compose -f docker-compose.staging.yml up -d --build staging-web
           
