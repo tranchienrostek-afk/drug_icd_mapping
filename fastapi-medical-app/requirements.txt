@@ -1,4 +1,3 @@
-fopenai
 pandas
 numpy
 gunicorn
