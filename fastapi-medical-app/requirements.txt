@@ -5,6 +5,7 @@ uvicorn
 fastapi
 pytest
 pytest-asyncio
+pytest-mock
 python-multipart
 # AI libs
 langchain

@@ -1,5 +1,6 @@
-from pydantic import BaseModel, ConfigDict
-from typing import List, Optional
+from pydantic import BaseModel, ConfigDict, field_serializer
+from typing import List, Optional, Union, Any
+from datetime import datetime
 
 class DrugInput(BaseModel):
     name: str
@@ -226,19 +227,31 @@ class DrugStagingResponse(BaseModel):
     so_dang_ky: str
     hoat_chat: str
     status: str
-    created_at: str
+    created_at: Union[str, datetime]
     created_by: str
     conflict_type: str # 'sdk' or 'name'
     conflict_id: Optional[int] = None
     conflict_info: Optional[dict] = None # Nested info about the conflicting drug
+    
+    @field_serializer('created_at')
+    def serialize_created_at(self, value):
+        if isinstance(value, datetime):
+            return value.isoformat()
+        return str(value)
 
 class DrugHistoryResponse(BaseModel):
     id: int
     original_drug_id: int
     ten_thuoc: str
     so_dang_ky: str
-    archived_at: str
+    archived_at: Union[str, datetime]
     archived_by: str
+    
+    @field_serializer('archived_at')
+    def serialize_archived_at(self, value):
+        if isinstance(value, datetime):
+            return value.isoformat()
+        return str(value)
 
 class DrugDiseaseLinkRequest(BaseModel):
     drug_name: str
