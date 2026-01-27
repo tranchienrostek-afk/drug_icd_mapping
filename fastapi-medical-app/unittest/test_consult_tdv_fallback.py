@@ -164,8 +164,8 @@ class TestTDVFallbackLogic:
         assert results[0]['source'] == 'INTERNAL_KB_EMPTY'
     
     @pytest.mark.asyncio
-    async def test_both_null_returns_unknown(self, service_with_mock_kb, mock_request):
-        """When both TDV and AI are null, return unknown."""
+    async def test_both_null_defaults_to_main_drug(self, service_with_mock_kb, mock_request):
+        """When both TDV and AI are null but KB matched, default to main drug."""
         service_with_mock_kb.kb_matcher.find_best_match_with_icd.return_value = {
             'tdv_feedback': None,
             'treatment_type': None,
@@ -175,7 +175,10 @@ class TestTDVFallbackLogic:
         results = await service_with_mock_kb.process_integrated_consultation(mock_request)
         
         assert len(results) == 1
-        assert results[0]['validity'] == 'unknown'
+        # NEW LOGIC: KB matched = drug exists in system = default to main drug
+        assert results[0]['validity'] == 'valid'
+        assert results[0]['role'] == 'main drug'
+        assert results[0]['source'] == 'INTERNAL_KB_DEFAULT'
 
 
 if __name__ == "__main__":
