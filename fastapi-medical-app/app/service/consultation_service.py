@@ -191,41 +191,72 @@ class ConsultationService:
         Auto-correct category and validity based on role (Source of Truth).
         Returns: (category, validity, role)
         
+        ROLE is the source of truth:
+        - role determines category AND validity
+        - Invalid combinations are IMPOSSIBLE because we derive from role
+        
         Rules:
-          - group NODRUG: medical equipment, supplement, cosmeceuticals -> category='nodrug', validity=''
-          - group DRUG: main drug, secondary drug -> category='drug', validity='valid'
-          - invalid/null -> category='drug', validity='invalid'
+          - NODRUG roles: supplement, medical equipment, cosmeceuticals → category='nodrug', validity=''
+          - DRUG roles: main drug, secondary drug → category='drug', validity='valid'
+          - No role or invalid → category='drug', validity='invalid'
         """
         if not role:
-            # Case: Invalid Drug (No role) -> drug / invalid
             return "drug", "invalid", ""
-            
+        
         role_lower = role.lower().strip()
         
-        # Group 1: NODRUG
-        # Extended list based on user context and Task 042
-        non_drug_roles = [
+        # ========== NODRUG ROLES ==========
+        nodrug_roles = [
             "supplement", "thực phẩm chức năng",
             "cosmeceuticals", "dược mỹ phẩm",
             "medical equipment", "thiết bị y tế",
             "medical supply", "vật tư y tế"
         ]
         
-        if role_lower in non_drug_roles:
+        if role_lower in nodrug_roles:
             return "nodrug", "", role
-            
-        # Group 2: DRUG
-        if role_lower in ["main drug", "secondary drug"]:
+        
+        # ========== DRUG ROLES (VALID) ==========
+        drug_valid_roles = ["main drug", "secondary drug"]
+        
+        if role_lower in drug_valid_roles:
             return "drug", "valid", role
-            
-        # Fallback for "invalid" keyword
-        if "invalid" in role_lower:
-             return "drug", "invalid", role
-             
-        # Default behavior for unknown roles:
-        # Task 042 implies strictness. However, if we have a defined role that isn't in the lists above,
-        # it's ambiguous. But per "Sản phẩm nào cũng có category là drug hoặc nodrug", 
-        # let's map unknown non-empty roles to drug/valid (assuming it's a treatment type not listed)?
-        # OR better, consistent with "invalid" if it doesn't match known types?
-        # Let's stick to safe default: drug, valid (assuming it's a drug role not explicitly listed, unless it says invalid)
+        
+        # ========== INVALID DRUG ==========
+        if "invalid" in role_lower or "contraindication" in role_lower:
+            return "drug", "invalid", role
+        
+        # ========== UNKNOWN ROLE ==========
+        # Log warning for unknown roles
+        print(f"[WARNING] Unknown role '{role}' - defaulting to drug/valid")
         return "drug", "valid", role
+    
+    def validate_output(self, category: str, validity: str, role: str) -> Tuple[str, str, str]:
+        """
+        Final validation to ensure output consistency.
+        Fixes any invalid combinations that might slip through.
+        
+        FORBIDDEN COMBINATIONS (will be auto-corrected):
+        - category='nodrug' + role='main drug' → IMPOSSIBLE
+        - category='drug' + role='supplement' → IMPOSSIBLE
+        """
+        role_lower = role.lower().strip() if role else ""
+        
+        # Define role groups
+        nodrug_roles = {"supplement", "thực phẩm chức năng", "cosmeceuticals", 
+                        "dược mỹ phẩm", "medical equipment", "thiết bị y tế", 
+                        "medical supply", "vật tư y tế"}
+        drug_roles = {"main drug", "secondary drug"}
+        
+        # Validate: If role is a drug role, category MUST be 'drug'
+        if role_lower in drug_roles and category != "drug":
+            print(f"[FIX] Invalid combo: category='{category}' + role='{role}' → Correcting to drug/valid")
+            return "drug", "valid", role
+        
+        # Validate: If role is a nodrug role, category MUST be 'nodrug'
+        if role_lower in nodrug_roles and category != "nodrug":
+            print(f"[FIX] Invalid combo: category='{category}' + role='{role}' → Correcting to nodrug")
+            return "nodrug", "", role
+        
+        return category, validity, role
+
