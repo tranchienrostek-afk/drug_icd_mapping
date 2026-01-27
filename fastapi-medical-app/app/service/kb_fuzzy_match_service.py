@@ -228,6 +228,36 @@ class KBFuzzyMatchService:
                     "match_method": match['method']
                 }
             
+            # --- FALLBACK: Generic Drug Match (Ignore ICD) ---
+            # If no entry for this specific ICD, return the most "authoritative" entry for the drug
+            # Priority: Has TDV feedback > highest frequency
+            cursor.execute("""
+                SELECT 
+                    drug_name_norm,
+                    treatment_type,
+                    tdv_feedback,
+                    frequency
+                FROM knowledge_base
+                WHERE drug_name_norm = ?
+                ORDER BY 
+                    (CASE WHEN tdv_feedback IS NOT NULL AND tdv_feedback != '' AND tdv_feedback != 'None' AND tdv_feedback != 'null' THEN 1 ELSE 0 END) DESC,
+                    frequency DESC,
+                    last_updated DESC
+                LIMIT 1
+            """, (match['drug_name_norm'],))
+            
+            row = cursor.fetchone()
+            if row:
+                return {
+                    "drug_name_norm": row['drug_name_norm'],
+                    "disease_icd": "GENERIC", # Indicate generic match
+                    "treatment_type": row['treatment_type'],
+                    "tdv_feedback": row['tdv_feedback'],
+                    "frequency": row['frequency'],
+                    "match_score": match['score'],
+                    "match_method": f"{match['method']} (Generic)"
+                }
+            
             return None
             
         finally:
