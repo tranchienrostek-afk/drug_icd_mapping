@@ -32,7 +32,6 @@ class MonitorService:
         Since we don't have a separate batches table, we aggregate from knowledge_base.
         """
         conn = self.db_core.get_connection()
-        conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
         try:
@@ -49,11 +48,30 @@ class MonitorService:
                 WHERE batch_id IS NOT NULL
                 GROUP BY batch_id
                 ORDER BY completed_at DESC
+                LIMIT %s
+            """ if self.db_core.db_type == 'postgres' else """
+                SELECT 
+                    batch_id,
+                    COUNT(*) as total_rows,
+                    MIN(last_updated) as started_at,
+                    MAX(last_updated) as completed_at,
+                    COUNT(DISTINCT drug_name_norm) as unique_drugs,
+                    COUNT(DISTINCT disease_icd) as unique_diseases
+                FROM knowledge_base
+                WHERE batch_id IS NOT NULL
+                GROUP BY batch_id
+                ORDER BY completed_at DESC
                 LIMIT ?
             """, (limit,))
             
             rows = cursor.fetchall()
-            return [dict(r) for r in rows]
+            # Handle both dict (psycopg2 with RealDictCursor) and tuple results
+            if rows and isinstance(rows[0], dict):
+                return rows
+            elif rows:
+                columns = ['batch_id', 'total_rows', 'started_at', 'completed_at', 'unique_drugs', 'unique_diseases']
+                return [dict(zip(columns, row)) for row in rows]
+            return []
         finally:
             conn.close()
 
@@ -62,8 +80,8 @@ class MonitorService:
         Get API Health stats for the last N days.
         """
         conn = self.db_core.get_connection()
-        conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
+        is_postgres = self.db_core.db_type == 'postgres'
         
         try:
             # Filter usually for consult endpoint
@@ -72,20 +90,38 @@ class MonitorService:
             stats = {}
             
             # 1. Total Requests
-            cursor.execute("""
-                SELECT COUNT(*) as total 
-                FROM api_logs 
-                WHERE endpoint LIKE ? AND created_at >= datetime('now', ?)
-            """, (f"%{endpoint_filter}%", f"-{days} days"))
-            stats['total_requests'] = cursor.fetchone()['total']
+            if is_postgres:
+                cursor.execute("""
+                    SELECT COUNT(*) as total 
+                    FROM api_logs 
+                    WHERE endpoint LIKE %s AND created_at >= NOW() - INTERVAL '%s days'
+                """, (f"%{endpoint_filter}%", days))
+            else:
+                cursor.execute("""
+                    SELECT COUNT(*) as total 
+                    FROM api_logs 
+                    WHERE endpoint LIKE ? AND created_at >= datetime('now', ?)
+                """, (f"%{endpoint_filter}%", f"-{days} days"))
+            
+            row = cursor.fetchone()
+            stats['total_requests'] = row['total'] if isinstance(row, dict) else row[0]
             
             # 2. Success Rate
-            cursor.execute("""
-                SELECT COUNT(*) as errors 
-                FROM api_logs 
-                WHERE endpoint LIKE ? AND status_code >= 500 AND created_at >= datetime('now', ?)
-            """, (f"%{endpoint_filter}%", f"-{days} days"))
-            errors = cursor.fetchone()['errors']
+            if is_postgres:
+                cursor.execute("""
+                    SELECT COUNT(*) as errors 
+                    FROM api_logs 
+                    WHERE endpoint LIKE %s AND status_code >= 500 AND created_at >= NOW() - INTERVAL '%s days'
+                """, (f"%{endpoint_filter}%", days))
+            else:
+                cursor.execute("""
+                    SELECT COUNT(*) as errors 
+                    FROM api_logs 
+                    WHERE endpoint LIKE ? AND status_code >= 500 AND created_at >= datetime('now', ?)
+                """, (f"%{endpoint_filter}%", f"-{days} days"))
+            
+            row = cursor.fetchone()
+            errors = row['errors'] if isinstance(row, dict) else row[0]
             
             if stats['total_requests'] > 0:
                 stats['success_rate'] = round(((stats['total_requests'] - errors) / stats['total_requests']) * 100, 2)
@@ -93,23 +129,46 @@ class MonitorService:
                 stats['success_rate'] = 100.0
                 
             # 3. Avg Latency
-            cursor.execute("""
-                SELECT AVG(response_time_ms) as avg_latency
-                FROM api_logs 
-                WHERE endpoint LIKE ? AND created_at >= datetime('now', ?)
-            """, (f"%{endpoint_filter}%", f"-{days} days"))
-            avg = cursor.fetchone()['avg_latency']
+            if is_postgres:
+                cursor.execute("""
+                    SELECT AVG(response_time_ms) as avg_latency
+                    FROM api_logs 
+                    WHERE endpoint LIKE %s AND created_at >= NOW() - INTERVAL '%s days'
+                """, (f"%{endpoint_filter}%", days))
+            else:
+                cursor.execute("""
+                    SELECT AVG(response_time_ms) as avg_latency
+                    FROM api_logs 
+                    WHERE endpoint LIKE ? AND created_at >= datetime('now', ?)
+                """, (f"%{endpoint_filter}%", f"-{days} days"))
+            
+            row = cursor.fetchone()
+            avg = row['avg_latency'] if isinstance(row, dict) else row[0]
             stats['avg_latency'] = round(avg, 2) if avg else 0
             
             # 4. Recent Logs
-            cursor.execute("""
-                SELECT * FROM api_logs
-                WHERE endpoint LIKE ?
-                ORDER BY created_at DESC
-                LIMIT 20
-            """, (f"%{endpoint_filter}%",))
-            stats['recent_logs'] = [dict(r) for r in cursor.fetchall()]
+            if is_postgres:
+                cursor.execute("""
+                    SELECT * FROM api_logs
+                    WHERE endpoint LIKE %s
+                    ORDER BY created_at DESC
+                    LIMIT 20
+                """, (f"%{endpoint_filter}%",))
+            else:
+                cursor.execute("""
+                    SELECT * FROM api_logs
+                    WHERE endpoint LIKE ?
+                    ORDER BY created_at DESC
+                    LIMIT 20
+                """, (f"%{endpoint_filter}%",))
+            
+            rows = cursor.fetchall()
+            if rows and isinstance(rows[0], dict):
+                stats['recent_logs'] = rows
+            else:
+                stats['recent_logs'] = []
 
             return stats
         finally:
             conn.close()
+
