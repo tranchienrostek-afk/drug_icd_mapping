@@ -4,6 +4,7 @@ gunicorn
 uvicorn
 fastapi
 pytest
+pytest-asyncio
 python-multipart
 # AI libs
 langchain
