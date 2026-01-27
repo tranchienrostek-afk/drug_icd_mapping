@@ -1,6 +1,40 @@
 # 🏥 Drug ICD Mapping - Deployment & Operations Guide
 
-> **Phiên bản:** 2.0 | **Cập nhật:** 2026-01-27 | **Author:** AI Development Team
+> **Phiên bản:** 3.0 | **Cập nhật:** 2026-01-27 | **Author:** AI Development Team
+
+---
+
+## 🌊 Push to Git, Everything Flows
+
+> **Triết lý:** Developer chỉ cần `git push origin main` - mọi thứ còn lại sẽ tự động chạy như dòng suối.
+
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                        🌊 AUTOMATIC CI/CD FLOW                               │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│   git push     GitHub      Staging        Tests        Production            │
+│   ───────►    Actions ───► Deploy ────► ✅ Pass ────►  Deploy                │
+│                  │           :8001                       :8000                │
+│                  │             │                                             │
+│                  │             ▼ ❌ Fail                                      │
+│                  │         ┌────────┐                                        │
+│                  └────────►│  STOP  │  (Không promote)                       │
+│                            └────────┘                                        │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Quy trình tự động
+
+| Step | Tự động | Thời gian | Mô tả |
+|------|---------|-----------|-------|
+| 1 | ✅ | 0-1 phút | GitHub Actions trigger khi push `main` |
+| 2 | ✅ | 2-5 phút | Deploy Staging (rebuild Docker image) |
+| 3 | ✅ | 1-2 phút | Chạy Health Check + Unit Tests |
+| 4 | ✅ | 2-5 phút | **Nếu tests pass** → Deploy Production |
+| 5 | ✅ | 0-1 phút | Production Health Check |
+
+**Tổng thời gian: ~10 phút từ push đến production!**
 
 ---
 
@@ -17,8 +51,8 @@ Hệ thống mapping thuốc với mã ICD, hỗ trợ bác sĩ tra cứu và t�
 | **Database** | PostgreSQL 16 (production), SQLite (dev) |
 | **AI/LLM** | Azure OpenAI (GPT-4o-mini) |
 | **Container** | Docker + Docker Compose |
-| **Reverse Proxy** | Nginx Proxy Manager |
-| **Monitoring** | SignOz |
+| **CI/CD** | GitHub Actions (Self-hosted Runner) |
+| **Monitoring** | Built-in Dashboard `/monitor` |
 
 ---
 
@@ -37,8 +71,8 @@ Hệ thống mapping thuốc với mã ICD, hỗ trợ bác sĩ tra cứu và t�
          ┌─────────────────┼─────────────────┐
          │                 │                 │
     ┌────▼────┐       ┌────▼────┐       ┌────▼────┐
-    │  PROD   │       │ STAGING │       │  OTHER  │
-    │  :8000  │       │  :8001  │       │ SERVICES│
+    │  PROD   │       │ STAGING │       │ MONITOR │
+    │  :8000  │       │  :8001  │       │ /monitor│
     └────┬────┘       └────┬────┘       └─────────┘
          │                 │
          │    ┌────────────┼────────────────┐
@@ -61,19 +95,59 @@ Hệ thống mapping thuốc với mã ICD, hỗ trợ bác sĩ tra cứu và t�
 | **RAM** | 128GB |
 | **Disk** | ~500GB |
 
+### URLs quan trọng
+
+| URL | Mô tả |
+|-----|-------|
+| `http://10.14.190.28:8000` | Production API |
+| `http://10.14.190.28:8001` | Staging API |
+| `http://10.14.190.28:8000/docs` | Swagger UI |
+| `http://10.14.190.28:8000/monitor` | 📊 **Dashboard Monitor** |
+
 ### Thư mục quan trọng
 
 ```bash
 /root/workspace/
 ├── drug_icd_mapping/              # PRODUCTION
 │   └── fastapi-medical-app/       # App folder
-├── drug_icd_mapping_staging/      # STAGING
+├── drug_icd_mapping_staging/      # STAGING  
 │   └── fastapi-medical-app/
 ├── deploy_logs/                   # Deployment logs
-│   ├── staging/                   # Staging logs
-│   └── production/                # Production logs
 └── db_backup/                     # Database backups
 ```
+
+---
+
+## 🚀 Developer Workflow
+
+### Cách duy nhất để deploy: Push to Git!
+
+```bash
+# 1. Làm việc trên local
+git add .
+git commit -m "feat: new feature"
+
+# 2. Push và chờ 🌊
+git push origin main
+
+# 3. Theo dõi trên GitHub Actions
+# https://github.com/<org>/<repo>/actions
+```
+
+> [!TIP]
+> **Không cần SSH vào server!** GitHub Actions sẽ tự động deploy.
+
+### Theo dõi CI/CD Pipeline
+
+1. Mở GitHub Repository → **Actions** tab
+2. Click vào workflow run mới nhất
+3. Xem logs từng stage: Staging → Tests → Production
+
+### Trigger paths
+
+CI/CD **chỉ chạy** khi thay đổi files trong:
+- `fastapi-medical-app/**` (code)
+- `.github/workflows/**` (CI/CD config)
 
 ---
 
@@ -95,155 +169,64 @@ AZURE_OPENAI_ENDPOINT=https://<resource>.cognitiveservices.azure.com/
 AZURE_OPENAI_API_KEY=<YOUR_API_KEY>
 AZURE_OPENAI_API_VERSION=2024-06-01
 AZURE_DEPLOYMENT_NAME=gpt-4o-mini
+AZURE_OPENAI_KEY=<YOUR_API_KEY>
 ```
 
-> ⚠️ **QUAN TRỌNG:** File `.env` KHÔNG được commit lên Git!
+> [!CAUTION]
+> **File `.env` KHÔNG được commit lên Git!**
+> 
+> `.env` đã được cấu hình sẵn trên server. Chỉ sửa khi thay đổi API keys.
 
 ---
 
-## 🚀 Quy trình Deploy
+## 📊 Monitoring Dashboard
 
-### Sơ đồ Pipeline
+Truy cập: **http://10.14.190.28:8000/monitor**
 
-```
-┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐
-│  LOCAL   │───►│  GITHUB  │───►│ STAGING  │───►│   PROD   │
-│  Dev     │push│   Main   │pull│  :8001   │test│  :8000   │
-└──────────┘    └──────────┘    └──────────┘pass└──────────┘
-                                     │
-                                     ▼ fail
-                              ┌──────────┐
-                              │   FIX    │
-                              │  BUGS    │
-                              └──────────┘
-```
+### Features
 
-### Bước 1: Deploy Staging
+| Tab | Nội dung |
+|-----|----------|
+| **Summary** | Request counts, API stats |
+| **System** | CPU/RAM/Disk gauges, Network I/O, Uptime |
+| **Request Detail** | Chi tiết từng request, response JSON |
 
-```bash
-cd /root/workspace/drug_icd_mapping_staging/fastapi-medical-app
-./scripts/deploy_staging.sh
-```
-
-**Script này sẽ:**
-1. Pull code mới từ GitHub
-2. Build Docker image
-3. Chạy container trên port 8001
-4. Chạy unittest
-5. Log kết quả (SUCCESS/FAILED)
-
-### Bước 2: Verify Staging
-
-```bash
-# Health check
-curl http://localhost:8001/api/v1/health
-
-# Test API
-curl http://localhost:8001/docs
-```
-
-### Bước 3: Promote to Production
-
-> [!CAUTION]
-> **KIỂM TRA DATA TRƯỚC KHI PROMOTE!**
-> 
-> Đảm bảo database PostgreSQL đã có đầy đủ data từ SQLite:
-> ```bash
-> # Kiểm tra số records
-> docker exec -it postgres-db psql -U postgres -d medical_db -c "SELECT count(*) FROM drugs;"
-> docker exec -it postgres-db psql -U postgres -d medical_db -c "SELECT count(*) FROM knowledge_base;"
-> 
-> # Nếu số lượng ít (< 100), cần chạy migration:
-> cd /root/workspace/drug_icd_mapping_staging/fastapi-medical-app
-> docker exec -it drug_icd_staging_web python scripts/migrate_data_to_postgres.py
-> ```
-
-**Bước 3.1: Pull code mới vào prod folder**
-
-```bash
-cd /root/workspace/drug_icd_mapping
-git pull origin main
-cd fastapi-medical-app
-chmod +x scripts/*.sh
-```
-
-**Bước 3.2: Chạy promote script**
-
-```bash
-./scripts/promote_to_prod.sh
-```
-
-**Bước 3.3: Kiểm tra sau promote**
+### API Endpoints
 
 ```bash
 # Health check
 curl http://localhost:8000/api/v1/health
 
-# Xem container
-docker ps | grep drug_icd_mapping_prod
+# System stats
+curl http://localhost:8000/api/v1/monitor/stats
 
-# Xem logs
-docker logs drug_icd_mapping_prod_web_1 --tail=50
+# Detailed hardware info
+curl http://localhost:8000/api/v1/monitor/system
 ```
 
-> [!WARNING]  
-> **Nếu lần đầu deploy hoặc thay đổi requirements.txt:**
-> - Docker sẽ rebuild image (~10-20 phút tùy mạng)
-> - Dùng `screen` hoặc `nohup` để tránh SSH disconnect
-> ```bash
-> screen -S prod_deploy
-> ./scripts/promote_to_prod.sh
-> # Nhấn Ctrl+A, D để detach
-> # Quay lại: screen -r prod_deploy
-> ```
-
 ---
 
-## 📁 Scripts quan trọng
+## 🐳 Docker Commands (Chỉ khi cần)
 
-| Script | Mục đích |
-|--------|----------|
-| `scripts/deploy_staging.sh` | Deploy staging + unittest |
-| `scripts/promote_to_prod.sh` | Promote staging → prod |
-| `scripts/setup_staging.sh` | Setup staging lần đầu |
-| `deploy_prod.sh` | Deploy prod trực tiếp |
-
----
-
-## 🐳 Docker Commands
+> [!NOTE]
+> Thông thường KHÔNG cần chạy các lệnh này vì CI/CD tự động xử lý.
 
 ### Xem containers
+
 ```bash
-docker ps                                    # Running containers
-docker ps -a                                 # All containers
-docker ps | grep drug                        # Filter drug containers
+docker ps | grep drug                   # Running containers
+docker logs drug_icd_mapping_prod_web --tail=100
 ```
 
-### Xem logs
-```bash
-docker logs drug_icd_mapping_prod_web_1 --tail=100
-docker logs drug_icd_staging_web --tail=100 -f
-```
+### Restart thủ công (khẩn cấp)
 
-### Restart container
 ```bash
-docker restart drug_icd_mapping_prod_web_1
-docker restart drug_icd_staging_web
-```
+# Chỉ restart (không rebuild)
+docker restart drug_icd_mapping_prod_web
 
-### Vào container
-```bash
-docker exec -it drug_icd_staging_web bash
-docker exec -it drug_icd_mapping_prod_web_1 bash
-```
-
-### Build & Deploy thủ công
-```bash
-# Staging
-docker-compose -f docker-compose.staging.yml up -d --build
-
-# Production
-docker-compose up -d --build
+# Rebuild hoàn toàn (khi .env thay đổi)
+cd /root/workspace/drug_icd_mapping/fastapi-medical-app
+docker-compose rm -f -s web && docker-compose up -d web
 ```
 
 ---
@@ -255,7 +238,6 @@ docker-compose up -d --build
 | Param | Value |
 |-------|-------|
 | Host | `host.docker.internal` (trong container) |
-| Host | `localhost` (trên server) |
 | Port | `5434` |
 | User | `postgres` |
 | Database | `medical_db` |
@@ -263,12 +245,10 @@ docker-compose up -d --build
 ### Truy cập PostgreSQL
 
 ```bash
-# Từ server
 docker exec -it postgres-db psql -U postgres -d medical_db
 
-# Một số lệnh hữu ích
+# Useful commands
 \dt                     # List tables
-\d+ drugs               # Describe table
 SELECT count(*) FROM drugs;
 SELECT count(*) FROM knowledge_base;
 ```
@@ -287,272 +267,56 @@ docker exec -i postgres-db psql -U postgres medical_db < backup_file.sql
 
 ## 🧪 Testing
 
-### Chạy unittest trong container
+### Unit tests chạy tự động trong CI/CD!
+
+Nếu cần chạy thủ công:
 
 ```bash
-docker exec -it drug_icd_staging_web pytest unittest/ -v --tb=short
+docker exec -it drug_icd_staging_web pytest /app/unittest/ -v --tb=short
 ```
-
-### Chạy test cụ thể
-
-```bash
-# Chạy 1 file test
-docker exec -it drug_icd_staging_web pytest unittest/test_comprehensive_api.py -v
-
-# Chạy 1 test function
-docker exec -it drug_icd_staging_web pytest unittest/test_comprehensive_api.py::TestDrugsAPI::test_search_drugs -v
-```
-
----
-
-## ⚡ Fast Staging Testing (Không rebuild Docker)
-
-> **QUAN TRỌNG:** Khi fix bug và cần test nhanh, KHÔNG chạy `deploy_staging.sh` vì sẽ rebuild Docker (~20 phút). Thay vào đó dùng các cách sau:
-
-### Cách 1: Pull code + Restart (Không đổi requirements)
-
-```bash
-cd /root/workspace/drug_icd_mapping_staging/fastapi-medical-app
-
-# Pull code mới
-git pull origin main
-
-# Chỉ restart container (không rebuild)
-docker restart drug_icd_staging_web
-
-# Chạy test
-docker exec -it drug_icd_staging_web pytest unittest/ -v --tb=short
-```
-
-### Cách 2: Thêm package mới vào container đang chạy
-
-```bash
-# Cài package trực tiếp vào container (tạm thời)
-docker exec -it drug_icd_staging_web pip install <package-name>
-
-# Chạy test
-docker exec -it drug_icd_staging_web pytest unittest/ -v --tb=short
-```
-
-### Cách 3: Mount code trực tiếp (Dev mode)
-
-```bash
-# Tạo container với volume mount (code thay đổi tự động cập nhật)
-docker run -d --name staging_dev \
-  -v $(pwd):/app \
-  -p 8002:8000 \
-  --env-file .env \
-  fastapi-medical-app_staging-web \
-  uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-### Khi nào cần rebuild?
-
-| Thay đổi | Rebuild? | Lệnh |
-|----------|----------|------|
-| Chỉ sửa code Python | ❌ Không | `docker restart` |
-| Thêm package requirements | ⚠️ Có thể dùng `pip install` tạm | `docker exec ... pip install` |
-| Đổi Dockerfile | ✅ Có | `deploy_staging.sh` |
-| Đổi base image | ✅ Có | `deploy_staging.sh` |
 
 ---
 
 ## 🔧 Troubleshooting
 
+### CI/CD Pipeline Failed
+
+1. **Xem logs trên GitHub Actions**
+2. Kiểm tra stage nào fail:
+   - Staging deploy fail → Docker build error
+   - Tests fail → Code bug
+   - Production fail → Server issue
+
 ### Container không start
 
 ```bash
 # Xem logs
-docker logs drug_icd_staging_web --tail=100
+docker logs drug_icd_mapping_prod_web --tail=100
 
-# Kiểm tra port đang dùng
-ss -tuln | grep 8001
-
-# Restart
-docker-compose -f docker-compose.staging.yml down
-docker-compose -f docker-compose.staging.yml up -d
+# Kiểm tra .env
+docker exec -it drug_icd_mapping_prod_web env | grep -i postgres
+docker exec -it drug_icd_mapping_prod_web env | grep -i azure
 ```
 
 ### Database connection error
 
 ```bash
-# Kiểm tra postgres container
-docker ps | grep postgres
-
-# Test connection từ trong container
-docker exec -it drug_icd_staging_web python -c "
-from app.database.core import DatabaseCore
-db = DatabaseCore()
-conn = db.get_connection()
-print('Connection OK:', conn)
-"
+# Test connection
+docker exec -it postgres-db psql -U postgres -d medical_db -c "SELECT 1;"
 ```
 
-### Permission denied khi chạy script
-
-```bash
-chmod +x scripts/*.sh
-./scripts/deploy_staging.sh
-```
-
----
-
-## 📊 Monitoring
-
-### Health Check Endpoints
-
-| Endpoint | Mục đích |
-|----------|----------|
-| `/api/v1/health` | App health |
-| `/docs` | Swagger UI |
-| `/redoc` | ReDoc |
-
-### Kiểm tra resources
-
-```bash
-# Disk usage
-df -h
-
-# Memory
-free -h
-
-# Docker disk usage
-docker system df
-```
-
-### Dọn dẹp Docker
-
-```bash
-# Xóa images không dùng
-docker image prune -a
-
-# Xóa tất cả không dùng
-docker system prune -a
-```
-
----
-
-## 📝 Lessons Learned
-
-### ✅ Best Practices
-
-1. **Luôn test trên staging trước** - Không deploy thẳng prod
-2. **Backup database trước khi migrate** - pg_dump trước mọi thay đổi
-3. **Kiểm tra requirements.txt** - Đảm bảo dependencies đầy đủ
-4. **Không commit secrets** - Dùng .env và .gitignore
-
-### ⚠️ Known Issues
+### Known Issues & Workarounds
 
 | Issue | Giải pháp |
 |-------|-----------|
-| SSH disconnect lúc build | Dùng `screen` hoặc `nohup` |
-| Git clone chậm | Copy từ prod + git fetch |
-| PostgreSQL cursor type | Check `isinstance(res, dict)` |
-| Async test fail | Thêm `pytest-asyncio` |
-| Mocker fixture not found | Thêm `pytest-mock` |
-| datetime serialization | Dùng `field_serializer` trong Pydantic |
-| Port already allocated | Stop container cũ trước: `docker stop <name>` |
-| ContainerConfig KeyError | Bug docker-compose 1.29.2: Dùng `docker-compose rm -f -s web && docker-compose up -d web` |
-| DrugMatcher db_path error | Sửa `DrugMatcher(db_path=db_path)` → `DrugMatcher()` |
-| Restart không update code | Code trong image, restart chỉ restart container. Cần rebuild hoặc patch |
-| Docker Conflict (CI/CD) | Tên container bị trùng. Cần `docker rm -f <container_name> || true` trước khi up |
+| `ContainerConfig KeyError` | Bug docker-compose 1.29.2: `docker-compose rm -f -s web && docker-compose up -d web` |
+| `.env` không apply | Container cần recreate: `docker-compose rm -f -s web && docker-compose up -d web` |
+| SSH disconnect lúc build | CI/CD tự xử lý, không cần SSH |
+| Git clone chậm | CI/CD dùng `git fetch + reset --hard` |
 
 ---
 
-## 🔑 API Keys & Environment
-
-> [!CAUTION]
-> **Container KHÔNG tự đọc lại .env khi restart!**
-
-### Vấn đề: Thay đổi .env nhưng container không nhận
-
-```bash
-# ❌ SAI - Restart không đủ
-docker restart drug_icd_mapping_prod_web
-
-# ✅ ĐÚNG - Phải recreate container
-docker-compose rm -f -s web
-docker-compose up -d web
-```
-
-### Quick Fix (Patch code trong container)
-
-Khi cần sửa code gấp mà không muốn rebuild (~20 phút):
-
-```bash
-# Patch trực tiếp
-docker exec -it <container_name> sed -i 's/old_code/new_code/' /app/path/to/file.py
-
-# Restart để reload
-docker restart <container_name>
-```
-
-> **Lưu ý:** Quick fix sẽ mất khi rebuild. Đảm bảo code đã push GitHub để rebuild sau có fix vĩnh viễn.
-
----
-
-## 🩸 Kinh nghiệm xương máu - Data Migration
-
-### Vấn đề: UUID trong cột INTEGER
-
-Khi migrate từ SQLite → PostgreSQL, cột `disease_ref_id` và `secondary_disease_ref_id` có cả **INTEGER** và **UUID** → PostgreSQL reject.
-
-**Triệu chứng:**
-```
-invalid input syntax for type integer: "adeca53e-5b2f-4fb9-87cf-df084288b5ff"
-```
-
-**Giải pháp:**
-```bash
-# Alter PostgreSQL schema sang TEXT
-docker exec -it postgres-db psql -U postgres -d medical_db -c "
-ALTER TABLE knowledge_base 
-  ALTER COLUMN disease_ref_id TYPE TEXT,
-  ALTER COLUMN secondary_disease_ref_id TYPE TEXT;
-"
-
-# Sau đó chạy lại migration
-docker exec -it drug_icd_staging_web python scripts/migrate_data_to_postgres.py
-```
-
-### Checklist Migration
-
-> [!IMPORTANT]
-> **LUÔN kiểm tra data SAU khi migrate!**
-
-```bash
-# So sánh record count
-# SQLite
-docker exec -it drug_icd_staging_web python -c "
-import sqlite3
-conn = sqlite3.connect('/app/app/database/medical.db')
-cursor = conn.cursor()
-for table in ['drugs', 'diseases', 'knowledge_base']:
-    cursor.execute(f'SELECT count(*) FROM {table}')
-    print(f'{table}: {cursor.fetchone()[0]}')
-"
-
-# PostgreSQL
-docker exec -it postgres-db psql -U postgres -d medical_db -c "
-SELECT 'drugs', count(*) FROM drugs
-UNION ALL SELECT 'diseases', count(*) FROM diseases
-UNION ALL SELECT 'knowledge_base', count(*) FROM knowledge_base;
-"
-```
-
-### Data đã migrate thành công (2026-01-27)
-
-| Table | Records |
-|-------|---------|
-| drugs | 83,770 |
-| diseases | 15,832 |
-| knowledge_base | 17,978 |
-
----
-
-## 🔄 Git Workflow
-
-### Commit Convention
+## 📝 Commit Convention
 
 ```
 feat: add new feature
@@ -563,28 +327,30 @@ test: add tests
 chore: maintenance
 ```
 
-### Push to GitHub
-
-```bash
-git add .
-git commit -m "feat: description"
-git push origin main
-```
-
-> ⚠️ **Lưu ý:** Auto-deploy đã tắt. Push không tự động deploy prod.
-
 ---
 
 ## 📞 Support
 
-### Contacts
-- **DevOps**: Chưa có
-- **Backend**: Trần Chiến
+| Role | Contact |
+|------|---------|
+| DevOps | (Self-hosted Runner on Server) |
+| Backend | Trần Chiến |
 
 ### Logs Location
-- Staging: `/root/workspace/deploy_logs/staging/`
-- Production: `/root/workspace/deploy_logs/production/`
+- CI/CD Logs: GitHub Actions → Workflow runs
+- Docker Logs: `docker logs <container_name>`
+- App Monitor: `/monitor` dashboard
 
 ---
 
-*Tài liệu này được cập nhật tự động bởi AI Assistant.*
+## 📈 Data Stats (2026-01-27)
+
+| Table | Records |
+|-------|---------|
+| drugs | 83,770 |
+| diseases | 15,832 |
+| knowledge_base | 17,978 |
+
+---
+
+*🌊 Push to Git, Everything Flows! - Automated by GitHub Actions CI/CD*
