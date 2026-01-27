@@ -36,17 +36,22 @@ class ConsultationService:
                 match = self.kb_matcher.find_best_match_with_icd(item.name, disease_icd)
                 
                 if match:
-                    # Determine source based on tdv_feedback or treatment_type
-                    if match.get('tdv_feedback') and match['tdv_feedback'].lower() not in ('', 'none', 'null'):
-                        role = self._clean_role_string(match['tdv_feedback'])
+                    # Vote & Promote: Priority TDV > AI
+                    # TDV null/empty/"valid" = TDV agrees with AI
+                    tdv_role = self._get_valid_role(match.get('tdv_feedback'))
+                    ai_role = self._get_valid_role(match.get('treatment_type'))
+                    
+                    if tdv_role:
+                        role = tdv_role
                         source = "INTERNAL_KB_TDV"
-                        explanation = f"Expert Verified: Classified as '{role}' bởi TĐV. (Match: {match['match_method']})"
-                    elif match.get('treatment_type'):
-                        role = self._clean_role_string(match['treatment_type'])
+                        explanation = f"Expert Verified: '{role}' by TĐV. (Match: {match['match_method']})"
+                    elif ai_role:
+                        # TDV null = agrees with AI
+                        role = ai_role
                         source = "INTERNAL_KB_AI"
-                        explanation = f"Internal KB (AI): Ingested from historical usage. (Match: {match['match_method']})"
+                        explanation = f"AI Classification: '{role}' (TĐV đồng ý). (Match: {match['match_method']})"
                     else:
-                        continue
+                        continue  # No valid role, try next diagnosis
                     
                     category, validity, clean_role = self.auto_correct_mapping(role)
                     
@@ -161,6 +166,26 @@ class ConsultationService:
         s = s.replace('"', '').replace("'", '').replace('{', '').replace('}', '')
         
         return s.strip()
+
+    def _get_valid_role(self, raw_value: Optional[str]) -> Optional[str]:
+        """
+        Extract valid role from raw value.
+        Returns None if value is empty or non-informative (null, valid, invalid, etc.)
+        This supports Vote & Promote logic: TDV null/empty = agrees with AI.
+        """
+        if not raw_value:
+            return None
+        
+        cleaned = self._clean_role_string(raw_value)
+        
+        # Reject non-role values
+        # "valid" is not a role, just confirmation that drug is valid
+        # "invalid" and "unknown" are also not informative roles
+        invalid_values = ['', 'null', 'none', 'valid', 'invalid', 'unknown']
+        if cleaned.lower().strip() in invalid_values:
+            return None
+        
+        return cleaned
 
     def auto_correct_mapping(self, role: str) -> Tuple[str, str, str]:
         """
